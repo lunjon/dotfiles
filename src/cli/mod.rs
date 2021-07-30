@@ -33,7 +33,18 @@ impl Cli {
                             .about("Sync files from repository to home."),
                     )
                     .arg(Arg::new("dryrun").long("dryrun").short('d'))
-                    .arg(Arg::new("no-backup").long("no-backup").short('n'))
+                    .arg(
+                        Arg::new("no-confirm")
+                            .long("no-confirm")
+                            .short('n')
+                            .about("Skip prompt."),
+                    )
+                    .arg(
+                        Arg::new("no-backup")
+                            .long("no-backup")
+                            .short('n')
+                            .about("Do not create backups when copying to home."),
+                    )
                     .arg(Arg::new("ignore-missing").long("ignore-missing").short('i')),
             )
             .subcommand(
@@ -122,6 +133,11 @@ impl Cli {
                     dotfile.files(),
                 );
 
+                if matches.is_present("no-confirm") {
+                    log::info!("Setting confirm=false");
+                    handler.confirm(false);
+                }
+
                 if matches.is_present("no-backup") {
                     log::info!("Setting backup=false");
                     handler.backup(false);
@@ -138,6 +154,7 @@ impl Cli {
                 }
 
                 if matches.is_present("home") {
+                    handler.confirm(true);
                     handler.copy_to_home()?;
                 } else {
                     handler.copy_to_repo()?;
