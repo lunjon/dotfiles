@@ -72,9 +72,6 @@ impl Handler {
         repository: PathBuf,
         files: Vec<String>,
     ) -> Self {
-        let mut repository = repository;
-        repository.push("files");
-
         Self {
             backup: true,
             confirm: true,

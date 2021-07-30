@@ -2,9 +2,8 @@ use anyhow::Result;
 use dotfiles::dotfile::Handler;
 use dotfiles::files::{Sha256Digest, SystemFileHandler};
 use dotfiles::prompt::Prompt;
-use rand::{distributions::Alphanumeric, Rng};
+use dotfiles::utils;
 use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
 
 pub struct PromptMock;
@@ -13,25 +12,6 @@ impl Prompt for PromptMock {
     fn prompt(&self, _msg: &str) -> Result<String> {
         Ok("yes".to_string())
     }
-}
-
-fn create_file(path: &PathBuf, content: &str) {
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(path)
-        .expect("create new file");
-    file.write_all(content.as_bytes()).expect("write file");
-}
-
-fn random_tmp_dir(size: usize) -> PathBuf {
-    let r = rand::thread_rng();
-    let s: String = r
-        .sample_iter(&Alphanumeric)
-        .take(size)
-        .map(char::from)
-        .collect();
-    PathBuf::from(format!("tmp-{}", s))
 }
 
 struct Fixture {
@@ -59,7 +39,7 @@ impl Fixture {
     /// The tmp-* directory is removed after each test.
     fn setup() -> Self {
         // Create directories
-        let tmp_dir = random_tmp_dir(8);
+        let tmp_dir = utils::random_tmp_dir(8);
         let mut home_dir = tmp_dir.clone();
         home_dir.push("home");
 
@@ -69,27 +49,24 @@ impl Fixture {
         let mut repo_dir = tmp_dir.clone();
         repo_dir.push("repo");
 
-        let mut files = repo_dir.clone();
-        files.push("files");
-
         fs::create_dir_all(&config).expect("failed to create dir");
-        fs::create_dir_all(&files).expect("failed to create dir");
+        fs::create_dir_all(&repo_dir).expect("failed to create dir");
 
         // Create files
         let mut path = home_dir.clone();
         path.push("ignored.txt");
-        create_file(&path, "not included");
+        utils::create_file(&path, "not included");
 
         let mut path = home_dir.clone();
         path.push("init.vim");
-        create_file(&path, "set number");
-        let mut dst = files.clone();
+        utils::create_file(&path, "set number");
+        let mut dst = repo_dir.clone();
         dst.push("init.vim");
         fs::copy(&path, &dst).expect("failed to copy file");
 
         let mut path = home_dir.clone();
         path.push("tmux.conf");
-        create_file(&path, "set -g default-terminal /home/user/.cargo/bin/nu");
+        utils::create_file(&path, "set -g default-terminal /home/user/.cargo/bin/nu");
 
         let mut path = config.clone();
         path.push("spaceship.yml");
@@ -98,12 +75,11 @@ files:
   - one
   - two
 ";
-        create_file(&path, spaceship);
+        utils::create_file(&path, spaceship);
 
         let mut path = repo_dir.clone();
-        path.push("files");
         path.push("env.toml");
-        create_file(&path, "value = true");
+        utils::create_file(&path, "value = true");
 
         let file_handler = SystemFileHandler::default();
         let digester = Sha256Digest::default();
@@ -161,9 +137,9 @@ impl Drop for Fixture {
 fn copy_to_repo() {
     // Arrange
     let fixture = Fixture::setup();
-    let tmuxconf = fixture.repo_path(vec!["files", "tmux.conf"]);
+    let tmuxconf = fixture.repo_path(vec!["tmux.conf"]);
     assert!(!tmuxconf.exists());
-    let spaceship = fixture.repo_path(vec!["files", "config", "spaceship.yml"]);
+    let spaceship = fixture.repo_path(vec!["config", "spaceship.yml"]);
     assert!(!spaceship.exists());
 
     // Act
@@ -174,7 +150,7 @@ fn copy_to_repo() {
     assert!(tmuxconf.exists());
     assert!(spaceship.exists());
 
-    let ignored = fixture.repo_path(vec!["files", "ignored.txt"]);
+    let ignored = fixture.repo_path(vec!["ignored.txt"]);
     assert!(!ignored.exists());
 }
 

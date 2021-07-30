@@ -1,15 +1,16 @@
 use super::*;
 use crate::mocks::{DigestFunc, DigesterMock, FileHandlerMock, PromptMock, Shared};
+use crate::utils;
+use std::fs;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 struct Setup {
     files: Vec<String>,
-    home_dir: String,
-    repo_dir: String,
     digest_func: Box<DigestFunc>,
 }
 
 struct Fixture {
+    repo: PathBuf,
     handler: Handler,
     created_dirs: Shared<Vec<String>>,
     copied: Shared<HashMap<String, String>>,
@@ -38,30 +39,27 @@ impl Fixture {
         let value = entry.unwrap();
         assert_eq!(value, dst);
     }
+
+    fn temp_dir(&self) -> String {
+        self.repo.to_str().unwrap().to_string()
+    }
+}
+
+impl Drop for Fixture {
+    fn drop(&mut self) {
+        fs::remove_dir_all(&self.repo).unwrap();
+    }
 }
 
 impl Setup {
     fn new(files: Vec<&str>) -> Self {
         Self {
             files: files.iter().map(|f| f.to_string()).collect(),
-            home_dir: ".".to_string(),
-            repo_dir: ".".to_string(),
             digest_func: Box::new(|count| "a".repeat(count + 1).to_string()),
         }
     }
 
-    fn with_home(&mut self, path: &str) -> &mut Self {
-        self.home_dir = path.to_string();
-        self
-    }
-
-    fn with_repo(&mut self, path: &str) -> &mut Self {
-        self.repo_dir = path.to_string();
-        self
-    }
-
     fn build(self) -> Fixture {
-        // Used to track state
         let created_dirs = Rc::new(RefCell::new(Vec::new()));
         let copied = Rc::new(RefCell::new(HashMap::new()));
 
@@ -73,11 +71,27 @@ impl Setup {
         let digester = Box::new(DigesterMock::new(RefCell::new(0), self.digest_func));
         let prompt = Box::new(PromptMock {});
 
-        let home = PathBuf::from(self.home_dir);
-        let repo = PathBuf::from(self.repo_dir);
-        let handler = Handler::new(file_handler, digester, prompt, home, repo, self.files);
+        let home = PathBuf::from(".");
+
+        // Create temporary directory for the repo path
+        // and create a file called what.vim.
+        let repo = utils::random_tmp_dir(8);
+        fs::create_dir(&repo).unwrap();
+        let mut what = repo.clone();
+        what.push("what.vim");
+        utils::create_file(&what, r"What");
+
+        let handler = Handler::new(
+            file_handler,
+            digester,
+            prompt,
+            home,
+            repo.clone(),
+            self.files,
+        );
 
         Fixture {
+            repo,
             handler,
             created_dirs,
             copied,
@@ -88,32 +102,31 @@ impl Setup {
 #[test]
 fn copy_to_home() {
     // Arrange
-    let mut setup = Setup::new(vec![".ideavimrc"]);
-    setup.with_home(".").with_repo(".");
-    let fixture = setup.build();
+    let fixture = Setup::new(vec!["what.vim"]).build();
 
     // Act
     let result = fixture.handler.copy_to_home();
 
     // Assert
     assert!(result.is_ok());
-    fixture.assert_copied("./files/.ideavimrc", "./.ideavimrc");
+    let src = format!("{}/what.vim", fixture.temp_dir());
+    fixture.assert_copied(&src, "./what.vim");
 }
 
 #[test]
 fn copy_to_repo() {
     // Arrange
-    let mut setup = Setup::new(vec!["src/bin/dotfiles.rs"]);
-    setup.with_home(".").with_repo(".");
-    let fixture = setup.build();
+    let fixture = Setup::new(vec!["src/bin/dotfiles.rs"]).build();
 
     // Act
     let result = fixture.handler.copy_to_repo();
 
     // Assert
     assert!(result.is_ok());
-    fixture.assert_created("./files/src/bin");
-    fixture.assert_copied("./src/bin/dotfiles.rs", "./files/src/bin/dotfiles.rs");
+    let dst = format!("{}/src/bin", fixture.temp_dir());
+    fixture.assert_created(&dst);
+    let dst = format!("{}/src/bin/dotfiles.rs", fixture.temp_dir());
+    fixture.assert_copied("./src/bin/dotfiles.rs", &dst);
 }
 
 #[test]
@@ -211,7 +224,7 @@ fn get_status_missing_repo() {
 fn get_status_missing_diff() {
     let fixture = Setup::new(vec![]).build();
     let home_path = PathBuf::from("Cargo.toml");
-    let repo_path = PathBuf::from("files/.zshrc");
+    let repo_path = PathBuf::from(format!("{}/what.vim", fixture.temp_dir()));
 
     match fixture.handler.get_status(&home_path, &repo_path).unwrap() {
         Status::Diff => {}
