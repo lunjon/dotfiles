@@ -1,16 +1,14 @@
 use super::*;
 use crate::mocks::{DigestFunc, DigesterMock, FileHandlerMock, PromptMock, Shared};
-use crate::utils;
-use std::fs;
+use crate::utils::{FileSpec, TestContext};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 struct Setup {
-    files: Vec<String>,
     digest_func: Box<DigestFunc>,
 }
 
 struct Fixture {
-    repo: PathBuf,
+    context: TestContext,
     handler: Handler,
     created_dirs: Shared<Vec<String>>,
     copied: Shared<HashMap<String, String>>,
@@ -39,22 +37,11 @@ impl Fixture {
         let value = entry.unwrap();
         assert_eq!(value, dst);
     }
-
-    fn temp_dir(&self) -> String {
-        self.repo.to_str().unwrap().to_string()
-    }
-}
-
-impl Drop for Fixture {
-    fn drop(&mut self) {
-        fs::remove_dir_all(&self.repo).unwrap();
-    }
 }
 
 impl Setup {
-    fn new(files: Vec<&str>) -> Self {
+    fn new() -> Self {
         Self {
-            files: files.iter().map(|f| f.to_string()).collect(),
             digest_func: Box::new(|count| "a".repeat(count + 1).to_string()),
         }
     }
@@ -71,27 +58,35 @@ impl Setup {
         let digester = Box::new(DigesterMock::new(RefCell::new(0), self.digest_func));
         let prompt = Box::new(PromptMock {});
 
-        let home = PathBuf::from(".");
+        let context = TestContext::new(vec![
+            FileSpec {
+                path: "what.vim".to_string(),
+                status: Status::MissingHome,
+            },
+            FileSpec {
+                path: "config/init.vim".to_string(),
+                status: Status::Ok,
+            },
+            FileSpec {
+                path: "config/spaceship.yml".to_string(),
+                status: Status::Diff,
+            },
+        ]);
+        context.setup().unwrap();
 
-        // Create temporary directory for the repo path
-        // and create a file called what.vim.
-        let repo = utils::random_tmp_dir(8);
-        fs::create_dir(&repo).unwrap();
-        let mut what = repo.clone();
-        what.push("what.vim");
-        utils::create_file(&what, r"What");
+        let files = vec!["what.vim".to_string(), "config/".to_string()];
 
         let handler = Handler::new(
             file_handler,
             digester,
             prompt,
-            home,
-            repo.clone(),
-            self.files,
+            context.home_dir.clone(),
+            context.repo_dir.clone(),
+            files,
         );
 
         Fixture {
-            repo,
+            context,
             handler,
             created_dirs,
             copied,
@@ -102,103 +97,47 @@ impl Setup {
 #[test]
 fn copy_to_home() {
     // Arrange
-    let fixture = Setup::new(vec!["what.vim"]).build();
+    let fixture = Setup::new().build();
 
     // Act
-    let result = fixture.handler.copy_to_home();
-
-    // Assert
-    assert!(result.is_ok());
-    let src = format!("{}/what.vim", fixture.temp_dir());
-    fixture.assert_copied(&src, "./what.vim");
+    fixture.handler.copy_to_home().unwrap();
 }
 
 #[test]
 fn copy_to_repo() {
     // Arrange
-    let fixture = Setup::new(vec!["src/bin/dotfiles.rs"]).build();
+    let mut fixture = Setup::new().build();
+    fixture.handler.ignore_invalid(true);
 
     // Act
-    let result = fixture.handler.copy_to_repo();
-
-    // Assert
-    assert!(result.is_ok());
-    let dst = format!("{}/src/bin", fixture.temp_dir());
-    fixture.assert_created(&dst);
-    let dst = format!("{}/src/bin/dotfiles.rs", fixture.temp_dir());
-    fixture.assert_copied("./src/bin/dotfiles.rs", &dst);
+    fixture.handler.copy_to_repo().unwrap();
 }
 
 #[test]
-fn make_entries_with_different_digest() {
+#[should_panic]
+fn copy_to_repo_missing_source() {
     // Arrange
-    let fixture = Setup::new(vec!["Cargo.toml"]).build();
+    let fixture = Setup::new().build();
 
     // Act
-    let entries = fixture.handler.make_entries().unwrap();
-
-    // Assert
-    assert_eq!(1, entries.len());
+    fixture.handler.copy_to_repo().unwrap();
 }
 
 #[test]
-fn make_entries_single_file() {
+fn make_entries() {
     // Arrange
-    let fixture = Setup::new(vec!["Cargo.toml"]).build();
+    let fixture = Setup::new().build();
 
     // Act
     let entries = fixture.handler.make_entries().unwrap();
 
     // Assert
-    assert_eq!(1, entries.len());
-}
-
-#[test]
-fn make_entries_single_directory() {
-    let fixture = Setup::new(vec!["src/dotfile/"]).build();
-    let entries = fixture.handler.make_entries().unwrap();
-    assert_eq!(2, entries.len());
-}
-
-#[test]
-fn make_entries_combo() {
-    let fixture = Setup::new(vec!["src", "README.md"]).build();
-    let entries = fixture.handler.make_entries().unwrap();
-    assert_eq!(4, entries.len());
-}
-
-#[test]
-fn make_entries_non_relative_file() {
-    let fixture = Setup::new(vec!["/home/jonathan", "README.md"]).build();
-    let entries = fixture.handler.make_entries().unwrap();
-    assert_eq!(2, entries.len());
-
-    let has_invalid = entries.iter().any(|e| e.is_invalid());
-    assert!(has_invalid)
-}
-
-#[test]
-fn make_entries_with_root_file() {
-    let fixture = Setup::new(vec!["/etc/environment"]).build();
-    let entries = fixture.handler.make_entries().unwrap();
-    assert_eq!(1, entries.len());
-    let has_invalid = entries.iter().any(|e| e.is_invalid());
-    assert!(has_invalid)
-}
-
-#[test]
-fn make_entries_with_root_directory() {
-    let fixture = Setup::new(vec!["/usr/bin/"]).build();
-
-    let entries = fixture.handler.make_entries().unwrap();
-    assert_eq!(1, entries.len());
-    let has_invalid = entries.iter().any(|e| e.is_invalid());
-    assert!(has_invalid)
+    assert_eq!(3, entries.len());
 }
 
 #[test]
 fn get_status_missing_home() {
-    let fixture = Setup::new(vec![]).build();
+    let fixture = Setup::new().build();
     let home_path = PathBuf::from(".zshrc");
     let repo_path = PathBuf::from("files/.zshrc");
 
@@ -210,7 +149,7 @@ fn get_status_missing_home() {
 
 #[test]
 fn get_status_missing_repo() {
-    let fixture = Setup::new(vec![]).build();
+    let fixture = Setup::new().build();
     let home_path = PathBuf::from("Cargo.toml");
     let repo_path = PathBuf::from("files/Cargo.toml");
 
@@ -221,15 +160,13 @@ fn get_status_missing_repo() {
 }
 
 #[test]
-fn get_status_missing_diff() {
-    let fixture = Setup::new(vec![]).build();
+fn get_status_diff() {
+    let fixture = Setup::new().build();
     let home_path = PathBuf::from("Cargo.toml");
-    let repo_path = PathBuf::from(format!("{}/what.vim", fixture.temp_dir()));
+    let repo_path = PathBuf::from("README.md");
 
-    match fixture.handler.get_status(&home_path, &repo_path).unwrap() {
-        Status::Diff => {}
-        _ => panic!(),
-    }
+    let status = fixture.handler.get_status(&home_path, &repo_path).unwrap();
+    assert!(matches!(status, Status::Diff));
 }
 
 #[test]

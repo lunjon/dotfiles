@@ -201,8 +201,13 @@ impl Handler {
 
             if exec {
                 if target.is_home() && dst.exists() && self.backup {
-                    let backup = dst.with_extension("backup");
+                    let filename = dst.file_name().unwrap().to_str().unwrap();
+                    let filename = format!("{}.backup", filename);
+                    let mut backup = dst.clone();
+                    backup.set_file_name(filename);
                     self.file_handler.copy(&dst, &backup)?;
+
+                    log::debug!("Created backup of {}", dst_str);
                 }
                 log::debug!("Copy: {} to {}", src_str, dst_str);
                 self.file_handler.copy(&src, &dst)?;
@@ -407,7 +412,7 @@ impl fmt::Display for Entry {
     }
 }
 
-enum Status {
+pub enum Status {
     Ok,
     Diff,
     MissingHome,
