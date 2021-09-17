@@ -4,6 +4,7 @@ use crate::prompt::Prompt;
 use anyhow::{bail, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::{fmt, fs};
 
 #[cfg(test)]
@@ -108,6 +109,50 @@ impl Handler {
 
     pub fn copy_to_repo(&self) -> Result<()> {
         self.copy(Target::Repo)
+    }
+
+    pub fn diff(&self, cmd: Option<String>) -> Result<()> {
+        let entries = self.make_entries()?;
+        let entries: Vec<&Entry> = entries.iter().filter(|e| e.is_diff()).collect();
+
+        if entries.is_empty() {
+            println!("All up to date.");
+            return Ok(());
+        }
+
+        let (root, args) = match cmd {
+            Some(cstr) => {
+                log::debug!("Using custom diff command: {}", cstr);
+
+                let mut split: Vec<String> =
+                    cstr.split_whitespace().map(|s| s.to_string()).collect();
+                if split.is_empty() {
+                    bail!("empty diff command")
+                }
+
+                let first = split.remove(0);
+                (first, split)
+            }
+            None => (
+                "diff".to_string(),
+                vec!["-u".to_string(), "--color".to_string()],
+            ),
+        };
+
+        for entry in entries {
+            let a = entry.home_path.to_str().expect("to get home path");
+            let b = entry.repo_path.to_str().expect("to get repo path");
+
+            let mut cmd = Command::new(&root);
+            for arg in &args {
+                cmd.arg(arg);
+            }
+            cmd.arg(a);
+            cmd.arg(b);
+
+            cmd.status()?;
+        }
+        Ok(())
     }
 
     pub fn status(&self, brief: bool) -> Result<()> {
@@ -403,6 +448,10 @@ impl Entry {
 
     fn is_ok(&self) -> bool {
         matches!(self.status, Status::Ok)
+    }
+
+    fn is_diff(&self) -> bool {
+        matches!(self.status, Status::Diff)
     }
 }
 

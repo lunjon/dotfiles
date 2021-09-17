@@ -6,6 +6,7 @@ use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Default)]
 pub struct Cli;
@@ -58,6 +59,17 @@ impl Cli {
                     ),
             )
             .subcommand(
+                App::new("diff")
+                    .about("Show diff between files that do not match.")
+                    .arg(
+                        Arg::new("command")
+                            .long("command")
+                            .short('c')
+                            .about("Use as diff command (default: diff -u --color)")
+                            .number_of_values(1),
+                    ),
+            )
+            .subcommand(
                 App::new("edit").about("Edit ~/dotfiles.y[a]ml.").arg(
                     Arg::new("editor")
                         .long("editor")
@@ -89,49 +101,48 @@ impl Cli {
         let subcmd = matches.subcommand_name().unwrap();
         let matches = matches.subcommand_matches(subcmd).unwrap();
 
+        let create_handler = || -> Result<Handler> {
+            let digester = Sha256Digest::default();
+            let file_handler = SystemFileHandler::default();
+
+            let dotfile = load_dotfile(&dotfile, &file_handler)?;
+            let repo = dotfile.repository();
+
+            Ok(Handler::new(
+                Box::new(file_handler),
+                Box::new(digester),
+                Box::new(StdinPrompt {}),
+                home,
+                repo,
+                dotfile.files(),
+            ))
+        };
+
         match subcmd {
             "edit" => {
                 let editor = matches.value_of("editor").unwrap_or("vim");
                 log::debug!("Editing using {}", editor);
 
-                let mut cmd = std::process::Command::new(&editor);
+                let mut cmd = Command::new(&editor);
                 cmd.arg(&dotfile);
                 cmd.status()?;
             }
             "status" => {
-                let digester = Sha256Digest::default();
-                let file_handler = SystemFileHandler::default();
-
-                let dotfile = load_dotfile(&dotfile, &file_handler)?;
-                let repo = dotfile.repository();
-
-                let handler = Handler::new(
-                    Box::new(file_handler),
-                    Box::new(digester),
-                    Box::new(StdinPrompt {}),
-                    home,
-                    repo,
-                    dotfile.files(),
-                );
+                let handler = create_handler()?;
 
                 let brief = matches.is_present("brief");
                 handler.status(brief)?;
             }
+            "diff" => {
+                let command = match matches.value_of("command") {
+                    Some(c) => Some(c.to_string()),
+                    None => None,
+                };
+                let handler = create_handler()?;
+                handler.diff(command)?;
+            }
             "sync" => {
-                let digester = Sha256Digest::default();
-                let file_handler = SystemFileHandler::default();
-
-                let dotfile = load_dotfile(&dotfile, &file_handler)?;
-                let repo = dotfile.repository();
-
-                let mut handler = Handler::new(
-                    Box::new(file_handler),
-                    Box::new(digester),
-                    Box::new(StdinPrompt {}),
-                    home,
-                    repo,
-                    dotfile.files(),
-                );
+                let mut handler = create_handler()?;
 
                 if matches.is_present("no-confirm") {
                     log::info!("Setting confirm=false");
