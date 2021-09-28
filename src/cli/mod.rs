@@ -43,7 +43,6 @@ impl Cli {
                     .arg(
                         Arg::new("no-backup")
                             .long("no-backup")
-                            .short('n')
                             .about("Do not create backups when copying to home."),
                     )
                     .arg(Arg::new("ignore-missing").long("ignore-missing").short('i')),
