@@ -77,6 +77,16 @@ impl Cli {
                         .takes_value(true),
                 ),
             )
+            .subcommand(
+                App::new("git")
+                    .about("Run arbitrary git command in repository.")
+                    .long_about(
+                        "Runs an arbitrary git command in the configured repository.\
+Usage: dotfiles git -- <...>
+Example: dotfiles git -- status",
+                    )
+                    .arg(Arg::new("args").multiple_values(true)),
+            )
             .get_matches();
 
         if let Some(level) = matches.value_of("log") {
@@ -86,7 +96,7 @@ impl Cli {
         let home = get_home()?;
         log::debug!("Home directory: {}", home.to_str().unwrap());
 
-        let dotfile = match get_dotfile_path(&home) {
+        let dotfile_path = match get_dotfile_path(&home) {
             Some(path) => path,
             None => {
                 println!("~/dotfiles.y[a]ml not found, creating new");
@@ -101,7 +111,7 @@ impl Cli {
             let digester = Sha256Digest::default();
             let file_handler = SystemFileHandler::default();
 
-            let dotfile = load_dotfile(&dotfile, &file_handler)?;
+            let dotfile = load_dotfile(&dotfile_path, &file_handler)?;
             let repo = dotfile.repository();
 
             Ok(Handler::new(
@@ -120,7 +130,7 @@ impl Cli {
                 log::debug!("Editing using {}", editor);
 
                 let mut cmd = Command::new(&editor);
-                cmd.arg(&dotfile);
+                cmd.arg(&dotfile_path);
                 cmd.status()?;
             }
             Some(("status", matches)) => {
@@ -136,6 +146,23 @@ impl Cli {
                 };
                 let handler = create_handler()?;
                 handler.diff(command)?;
+            }
+            Some(("git", matches)) => {
+                let file_handler = SystemFileHandler::default();
+                let dotfile = load_dotfile(&dotfile_path, &file_handler)?;
+
+                let mut cmd = Command::new("git");
+                cmd.current_dir(dotfile.repository());
+
+                match matches.values_of("args") {
+                    Some(values) => {
+                        for arg in values {
+                            cmd.arg(arg);
+                        }
+                    }
+                    None => todo!(),
+                }
+                cmd.status()?;
             }
             Some(("sync", matches)) => {
                 let mut handler = create_handler()?;

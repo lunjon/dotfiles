@@ -18,12 +18,10 @@ When that file exists, you can use the following sub-commands:
 - `sync`: sync files between home and repository
 - `status`: show the current status of the tracked files
 - `edit`: edit the file
+- `git -- <...>`: run arbitrary git command in the repository
 
 ## Limitations
 
 - Only files relative to home directory is supported
 
 ## Todo
-
-- Add `git` sub-command for running arbitrary git commands in the configured
-  repository from anywhere.
