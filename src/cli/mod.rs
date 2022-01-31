@@ -4,6 +4,7 @@ use crate::logging;
 use crate::prompt::StdinPrompt;
 use anyhow::{bail, Result};
 use clap::{App, AppSettings, Arg};
+use std::env;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -18,7 +19,7 @@ impl Cli {
             .setting(AppSettings::SubcommandRequiredElseHelp)
             .arg(
                 Arg::new("log")
-                    .about("Display logs.")
+                    .help("Display logs.")
                     .long("log")
                     .global(true)
                     .takes_value(true)
@@ -27,23 +28,23 @@ impl Cli {
             )
             .subcommand(
                 App::new("sync")
-                    .about("Sync home <-> repo files.")
+                    .about("Sync home and repo files, defaults FROM home TO repo.")
                     .arg(
                         Arg::new("home")
                             .long("home")
-                            .about("Sync files from repository to home."),
+                            .help("Sync files from repository to home."),
                     )
                     .arg(Arg::new("dryrun").long("dryrun").short('d'))
                     .arg(
                         Arg::new("no-confirm")
                             .long("no-confirm")
                             .short('n')
-                            .about("Skip prompt."),
+                            .help("Skip prompt."),
                     )
                     .arg(
                         Arg::new("no-backup")
                             .long("no-backup")
-                            .about("Do not create backups when copying to home."),
+                            .help("Do not create backups when copying to home."),
                     )
                     .arg(Arg::new("ignore-missing").long("ignore-missing").short('i')),
             )
@@ -54,7 +55,7 @@ impl Cli {
                         Arg::new("brief")
                             .long("brief")
                             .short('b')
-                            .about("Only display files that are not up to date."),
+                            .help("Only display files that are not up to date."),
                     ),
             )
             .subcommand(
@@ -64,7 +65,7 @@ impl Cli {
                         Arg::new("command")
                             .long("command")
                             .short('c')
-                            .about("Use as diff command (default: diff -u --color)")
+                            .help("Use as diff command (default: diff -u --color)")
                             .number_of_values(1),
                     ),
             )
@@ -73,8 +74,7 @@ impl Cli {
                     Arg::new("editor")
                         .long("editor")
                         .short('e')
-                        .takes_value(true)
-                        .env("EDITOR"),
+                        .takes_value(true),
                 ),
             )
             .get_matches();
@@ -97,9 +97,6 @@ impl Cli {
             }
         };
 
-        let subcmd = matches.subcommand_name().unwrap();
-        let matches = matches.subcommand_matches(subcmd).unwrap();
-
         let create_handler = || -> Result<Handler> {
             let digester = Sha256Digest::default();
             let file_handler = SystemFileHandler::default();
@@ -117,22 +114,22 @@ impl Cli {
             ))
         };
 
-        match subcmd {
-            "edit" => {
-                let editor = matches.value_of("editor").unwrap_or("vim");
+        match matches.subcommand() {
+            Some(("edit", matches)) => {
+                let editor = get_editor(matches.value_of("editor"));
                 log::debug!("Editing using {}", editor);
 
                 let mut cmd = Command::new(&editor);
                 cmd.arg(&dotfile);
                 cmd.status()?;
             }
-            "status" => {
+            Some(("status", matches)) => {
                 let handler = create_handler()?;
 
                 let brief = matches.is_present("brief");
                 handler.status(brief)?;
             }
-            "diff" => {
+            Some(("diff", matches)) => {
                 let command = match matches.value_of("command") {
                     Some(c) => Some(c.to_string()),
                     None => None,
@@ -140,7 +137,7 @@ impl Cli {
                 let handler = create_handler()?;
                 handler.diff(command)?;
             }
-            "sync" => {
+            Some(("sync", matches)) => {
                 let mut handler = create_handler()?;
 
                 if matches.is_present("no-confirm") {
@@ -221,4 +218,14 @@ files: []",
         .open(&path)?;
     file.write_all(s.as_bytes())?;
     Ok(())
+}
+
+fn get_editor(flag: Option<&str>) -> String {
+    match flag {
+        Some(s) => s.to_string(),
+        None => match env::var("EDITOR") {
+            Ok(s) => s,
+            Err(_) => String::from("vim"),
+        },
+    }
 }

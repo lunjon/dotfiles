@@ -9,7 +9,7 @@ path = "src/bin/dotfiles.rs"
 
 [dependencies]
 anyhow = "1.0"
-clap = "3.0.0-beta.2"
+clap = "3.0"
 data-encoding = "2.3"
 home = "0.5.3"
 log = "0.4"
