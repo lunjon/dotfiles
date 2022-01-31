@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "dotfiles"
+name = "dotf"
 path = "src/bin/dotfiles.rs"
 
 [dependencies]
