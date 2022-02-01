@@ -3,27 +3,16 @@ use super::*;
 use crate::dotfile::Status;
 use anyhow::Result;
 use rand::{distributions::Alphanumeric, Rng};
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-use std::{
-    fs,
-    io::Write,
-    path::{Path, PathBuf},
-};
-
-struct Setup {
-    digest_func: Box<DigestFunc>,
-}
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fs;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
 
 pub struct FileSpec {
     pub path: String,
     pub status: Status,
-}
-
-pub struct TestContext {
-    file_specs: Vec<FileSpec>,
-    pub temp_dir: PathBuf,
-    pub home_dir: PathBuf,
-    pub repo_dir: PathBuf,
 }
 
 fn random_string(size: usize) -> String {
@@ -42,6 +31,13 @@ fn create_with_path(path: &Path, content: &str) -> Result<()> {
     let mut file = fs::OpenOptions::new().write(true).create(true).open(path)?;
     file.write_all(content.as_bytes())?;
     Ok(())
+}
+
+pub struct TestContext {
+    file_specs: Vec<FileSpec>,
+    pub temp_dir: PathBuf,
+    pub home_dir: PathBuf,
+    pub repo_dir: PathBuf,
 }
 
 impl TestContext {
@@ -136,6 +132,10 @@ struct Fixture {
     handler: Handler,
     _created_dirs: Shared<Vec<String>>,
     _copied: Shared<HashMap<String, String>>,
+}
+
+struct Setup {
+    digest_func: Box<DigestFunc>,
 }
 
 impl Setup {
