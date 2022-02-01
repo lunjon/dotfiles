@@ -8,36 +8,13 @@ struct Setup {
 }
 
 struct Fixture {
-    context: TestContext,
+    _context: TestContext,
     handler: Handler,
-    created_dirs: Shared<Vec<String>>,
-    copied: Shared<HashMap<String, String>>,
+    _created_dirs: Shared<Vec<String>>,
+    _copied: Shared<HashMap<String, String>>,
 }
 
-impl Fixture {
-    fn assert_created(&self, dir: &str) {
-        let dirs = self.created_dirs.borrow();
-        let s = format!("{:#?}", dirs);
-
-        assert!(
-            dirs.iter().any(|d| d == dir),
-            "expected {} to contain {}",
-            s,
-            dir
-        );
-    }
-
-    fn assert_copied(&self, src: &str, dst: &str) {
-        let copied = self.copied.borrow();
-        let s = format!("{:#?}", copied);
-
-        let entry = copied.get(src);
-        assert!(entry.is_some(), "expected {} to contain key {}", s, src);
-
-        let value = entry.unwrap();
-        assert_eq!(value, dst);
-    }
-}
+impl Fixture {}
 
 impl Setup {
     fn new() -> Self {
@@ -86,10 +63,10 @@ impl Setup {
         );
 
         Fixture {
-            context,
+            _context: context,
             handler,
-            created_dirs,
-            copied,
+            _created_dirs: created_dirs,
+            _copied: copied,
         }
     }
 }

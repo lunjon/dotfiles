@@ -442,6 +442,7 @@ impl Entry {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     fn is_invalid(&self) -> bool {
         matches!(self.status, Status::Invalid(_))
     }
