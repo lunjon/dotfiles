@@ -41,10 +41,6 @@ impl FileHandlerMock {
             content: None,
         }
     }
-
-    pub fn with_content(&mut self, content: String) {
-        self.content = Some(content);
-    }
 }
 
 impl FileHandler for FileHandlerMock {

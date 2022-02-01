@@ -1,8 +1,8 @@
+use super::unit::*;
+use crate::dotfile::{Handler, Status};
+use crate::files::{Sha256Digest, SystemFileHandler};
+use crate::prompt::Prompt;
 use anyhow::Result;
-use dotfiles::dotfile::{Handler, Status};
-use dotfiles::files::{Sha256Digest, SystemFileHandler};
-use dotfiles::prompt::Prompt;
-use dotfiles::utils::{FileSpec, TestContext};
 use std::path::PathBuf;
 
 pub struct PromptMock;
