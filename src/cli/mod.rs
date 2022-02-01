@@ -140,10 +140,7 @@ Example: dotfiles git -- status",
                 handler.status(brief)?;
             }
             Some(("diff", matches)) => {
-                let command = match matches.value_of("command") {
-                    Some(c) => Some(c.to_string()),
-                    None => None,
-                };
+                let command = matches.value_of("command").map(|c| c.to_string());
                 let handler = create_handler()?;
                 handler.diff(command)?;
             }
@@ -202,7 +199,7 @@ Example: dotfiles git -- status",
 }
 
 fn load_dotfile(path: &Path, file_handler: &SystemFileHandler) -> Result<Dotfile> {
-    let s = file_handler.read_string(&path)?;
+    let s = file_handler.read_string(path)?;
     let dotfile = Dotfile::from(&s)?;
     Ok(dotfile)
 }

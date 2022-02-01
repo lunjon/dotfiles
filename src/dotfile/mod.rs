@@ -23,7 +23,7 @@ pub struct Dotfile {
 
 impl Dotfile {
     pub fn from(s: &str) -> Result<Dotfile> {
-        let df: Dotfile = serde_yaml::from_str(&s)?;
+        let df: Dotfile = serde_yaml::from_str(s)?;
 
         // Validate that repository path exists
         let path = PathBuf::from(&df.repository);
@@ -389,10 +389,10 @@ impl Handler {
         } else if !repo_path.exists() {
             Status::MissingRepo
         } else {
-            let s = self.file_handler.read_string(&home_path)?;
+            let s = self.file_handler.read_string(home_path)?;
             let hash_src = self.digester.digest(s.as_bytes())?;
 
-            let s = self.file_handler.read_string(&repo_path)?;
+            let s = self.file_handler.read_string(repo_path)?;
             let hash_dst = self.digester.digest(s.as_bytes())?;
 
             if hash_src.eq(&hash_dst) {
