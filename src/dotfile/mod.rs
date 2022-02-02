@@ -252,8 +252,10 @@ impl Handler {
                 if target.is_home() && dst.exists() && self.backup {
                     let filename = dst.file_name().unwrap().to_str().unwrap();
                     let filename = format!("{}.backup", filename);
-                    let mut backup = dst.clone();
+
+                    let mut backup = PathBuf::from(&dst);
                     backup.set_file_name(filename);
+
                     self.file_handler.copy(&dst, &backup)?;
 
                     log::debug!("Created backup of {}", dst_str);
@@ -274,13 +276,14 @@ impl Handler {
             log::debug!("Processing file: {}", file);
             let path = PathBuf::from(file);
 
-            let mut home_path = self.home.clone();
+            let mut home_path = PathBuf::from(&self.home);
             home_path.push(&path);
-            let mut repo_path = self.repository.clone();
+
+            let mut repo_path = PathBuf::from(&self.repository);
             repo_path.push(&path);
 
             if !path.is_relative() {
-                log::debug!("Adding {} as invalid", file);
+                log::warn!("Adding {} as invalid", file);
                 let status = Status::Invalid(format!("path is not relative: {}", file));
                 let entry = Entry::new(file, status, home_path, repo_path);
                 entries.push(entry);
@@ -288,7 +291,7 @@ impl Handler {
             }
 
             if !(home_path.exists() || repo_path.exists()) {
-                log::debug!("Adding {} as invalid", file);
+                log::warn!("Adding {} as invalid", file);
                 let entry = Entry::new(
                     file,
                     Status::Invalid("does not exists in either home or repository".to_string()),
@@ -308,10 +311,10 @@ impl Handler {
 
             let mut expand = |dir: &PathBuf| -> Result<()> {
                 for file in Self::files_in(dir)? {
-                    let mut h = home_path.clone();
+                    let mut h = PathBuf::from(&home_path);
                     h.push(&file);
 
-                    let mut r = repo_path.clone();
+                    let mut r = PathBuf::from(&repo_path);
                     r.push(&file);
 
                     make_entry(h, r)?;
@@ -344,10 +347,10 @@ impl Handler {
                     files.dedup();
 
                     for file in files {
-                        let mut h = home_path.clone();
+                        let mut h = PathBuf::from(&home_path);
                         h.push(&file);
 
-                        let mut r = repo_path.clone();
+                        let mut r = PathBuf::from(&repo_path);
                         r.push(&file);
 
                         make_entry(h, r)?;
