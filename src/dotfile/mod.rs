@@ -414,7 +414,7 @@ impl Handler {
 
     fn files_in(dir: &Path) -> Result<Vec<String>> {
         if !dir.is_dir() {
-            bail!("was not a directory");
+            bail!("{:?} was not a directory", dir);
         }
         log::debug!("Expanding directory: {}", dir.to_str().unwrap());
 
