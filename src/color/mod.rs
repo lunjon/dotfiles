@@ -32,5 +32,5 @@ pub fn yellow(s: &str) -> String {
 }
 
 fn color(c: &str, s: &str) -> String {
-    format!("{}{}{}", c, s, RESET)
+    format!("{c}{s}{RESET}")
 }

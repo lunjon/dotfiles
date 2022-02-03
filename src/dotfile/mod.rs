@@ -251,7 +251,7 @@ impl Handler {
             if exec {
                 if target.is_home() && dst.exists() && self.backup {
                     let filename = dst.file_name().unwrap().to_str().unwrap();
-                    let filename = format!("{}.backup", filename);
+                    let filename = format!("{filename}.backup");
 
                     let mut backup = PathBuf::from(&dst);
                     backup.set_file_name(filename);
@@ -284,7 +284,7 @@ impl Handler {
 
             if !path.is_relative() {
                 log::warn!("Adding {} as invalid", file);
-                let status = Status::Invalid(format!("path is not relative: {}", file));
+                let status = Status::Invalid(format!("path is not relative: {file}"));
                 let entry = Entry::new(file, status, home_path, repo_path);
                 entries.push(entry);
                 continue;

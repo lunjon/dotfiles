@@ -5,7 +5,7 @@ pub trait Prompt {
     fn prompt(&self, msg: &str) -> Result<String>;
 
     fn confirm(&self, msg: &str) -> Result<bool> {
-        let msg = format!("{} [y/N] ", msg);
+        let msg = format!("{msg} [y/N] ");
         let answer = self.prompt(&msg)?;
         let lower = answer.to_lowercase();
 

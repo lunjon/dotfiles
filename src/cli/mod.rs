@@ -230,11 +230,7 @@ fn get_home() -> Result<PathBuf> {
 fn bootstrap(path: &Path) -> Result<()> {
     let current_dir = std::env::current_dir()?;
     let current_dir = current_dir.to_str().unwrap();
-    let s = format!(
-        "repository: {}
-files: []",
-        current_dir
-    );
+    let s = format!("repository: {current_dir} files: []");
 
     let mut file = std::fs::OpenOptions::new()
         .write(true)
