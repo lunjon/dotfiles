@@ -8,11 +8,7 @@ use std::process::Command;
 use std::{fmt, fs};
 
 #[cfg(test)]
-mod integration;
-#[cfg(test)]
-mod mock;
-#[cfg(test)]
-mod unit;
+mod tests;
 
 /// Dotfile represents the ~/dotfiles.yml file (called DF),
 /// i.e the specification the user creates.

@@ -3,6 +3,11 @@ use crate::prompt::Prompt;
 use anyhow::Result;
 use std::{cell::RefCell, collections::HashMap, path::Path, rc::Rc};
 
+#[cfg(test)]
+mod integration;
+#[cfg(test)]
+mod unit;
+
 pub type DigestFunc = dyn Fn(usize) -> String;
 
 pub type Shared<T> = Rc<RefCell<T>>;

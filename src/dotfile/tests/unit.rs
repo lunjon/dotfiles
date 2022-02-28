@@ -1,6 +1,5 @@
-use super::mock::{DigestFunc, DigesterMock, FileHandlerMock, PromptMock, Shared};
 use super::*;
-use crate::dotfile::Status;
+use crate::dotfile::{Handler, Status};
 use anyhow::Result;
 use rand::{distributions::Alphanumeric, Rng};
 use std::cell::RefCell;
