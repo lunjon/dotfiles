@@ -3,20 +3,20 @@ use crate::files::{FileHandler, Sha256Digest, SystemFileHandler};
 use crate::logging;
 use crate::prompt::StdinPrompt;
 use anyhow::{bail, Result};
-use clap::{App, AppSettings, Arg};
+use clap::{command, Arg, Command};
 use std::env;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::Command as Cmd;
 
 #[derive(Default)]
 pub struct Cli;
 
 impl Cli {
     pub fn exec(&self) -> Result<()> {
-        let matches = App::new("dotfiles")
+        let matches = command!()
             .about("Simple dotfile management")
-            .setting(AppSettings::SubcommandRequiredElseHelp)
+            .subcommand_required(true)
             .arg(
                 Arg::new("log")
                     .help("Display logs.")
@@ -27,7 +27,7 @@ impl Cli {
                     .default_missing_value("info"),
             )
             .subcommand(
-                App::new("sync")
+                Command::new("sync")
                     .about("Sync home and repo files, defaults FROM home TO repo.")
                     .arg(
                         Arg::new("home")
@@ -49,7 +49,7 @@ impl Cli {
                     .arg(Arg::new("ignore-missing").long("ignore-missing").short('i')),
             )
             .subcommand(
-                App::new("status")
+                Command::new("status")
                     .about("Display the current status between home and repository.")
                     .arg(
                         Arg::new("brief")
@@ -59,7 +59,7 @@ impl Cli {
                     ),
             )
             .subcommand(
-                App::new("diff")
+                Command::new("diff")
                     .about("Show diff between files that do not match.")
                     .arg(
                         Arg::new("command")
@@ -70,7 +70,7 @@ impl Cli {
                     ),
             )
             .subcommand(
-                App::new("edit").about("Edit ~/dotfiles.y[a]ml.").arg(
+                Command::new("edit").about("Edit ~/dotfiles.y[a]ml.").arg(
                     Arg::new("editor")
                         .long("editor")
                         .short('e')
@@ -78,7 +78,7 @@ impl Cli {
                 ),
             )
             .subcommand(
-                App::new("git")
+                Command::new("git")
                     .about("Run arbitrary git command in repository.")
                     .long_about(
                         "Runs an arbitrary git command in the configured repository.\
@@ -129,7 +129,7 @@ Example: dotfiles git -- status",
                 let editor = get_editor(matches.value_of("editor"));
                 log::debug!("Editing using {}", editor);
 
-                let mut cmd = Command::new(&editor);
+                let mut cmd = Cmd::new(&editor);
                 cmd.arg(&dotfile_path);
                 cmd.status()?;
             }
@@ -148,7 +148,7 @@ Example: dotfiles git -- status",
                 let file_handler = SystemFileHandler::default();
                 let dotfile = load_dotfile(&dotfile_path, &file_handler)?;
 
-                let mut cmd = Command::new("git");
+                let mut cmd = Cmd::new("git");
                 cmd.current_dir(dotfile.repository());
 
                 match matches.values_of("args") {

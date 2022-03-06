@@ -9,7 +9,7 @@ path = "src/bin/dotf.rs"
 
 [dependencies]
 anyhow = "1.0"
-clap = "3.0"
+clap = { version = "3.1", features = ["cargo"] }
 data-encoding = "2.3"
 home = "0.5.3"
 log = "0.4"
