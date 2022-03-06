@@ -6,6 +6,7 @@ edition = "2021"
 [[bin]]
 name = "dotf"
 path = "src/bin/dotf.rs"
+strip = true
 
 [dependencies]
 anyhow = "1.0"
