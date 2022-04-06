@@ -1,9 +1,7 @@
-default: build test
+default: lint check test
 
-check: fmt lint
-
-build:
-    cargo build
+check:
+    cargo check
 
 test:
     cargo test
