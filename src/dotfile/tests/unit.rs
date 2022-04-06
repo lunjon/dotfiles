@@ -274,7 +274,7 @@ fn files_in_dir() {
     assert!(result.is_ok());
 
     let paths = result.unwrap();
-    assert_eq!(3, paths.len());
+    assert_eq!(4, paths.len());
 }
 
 #[test]
