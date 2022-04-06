@@ -11,13 +11,7 @@ pub trait Prompt {
         let answer = self.prompt(&msg)?;
 
         let answer = match answer.to_lowercase().trim() {
-            "" => {
-                if default_yes {
-                    true
-                } else {
-                    false
-                }
-            }
+            "" => default_yes,
             "y" | "yes" => true,
             "n" | "no" => false,
             _ => false,
