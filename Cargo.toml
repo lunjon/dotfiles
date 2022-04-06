@@ -6,6 +6,8 @@ edition = "2021"
 [[bin]]
 name = "dotf"
 path = "src/bin/dotf.rs"
+
+[profile.release]
 strip = true
 
 [dependencies]

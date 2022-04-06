@@ -225,7 +225,7 @@ impl Handler {
                     color::green(src_str),
                     color::blue(dst_str)
                 );
-                let ok = self.prompt.confirm(&msg)?;
+                let ok = self.prompt.confirm(&msg, false)?;
 
                 if !ok {
                     log::info!("Skipping {}", src_str);
