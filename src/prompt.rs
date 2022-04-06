@@ -7,7 +7,7 @@ pub trait Prompt {
     fn confirm(&self, msg: &str, default_yes: bool) -> Result<bool> {
         let query = if default_yes { "[Y/n]" } else { "[y/N]" };
 
-        let msg = format!("{msg}? {query} ");
+        let msg = format!("{msg} {query} ");
         let answer = self.prompt(&msg)?;
 
         let answer = match answer.to_lowercase().trim() {
