@@ -38,8 +38,8 @@ impl Cli {
                     .arg(
                         Arg::new("no-confirm")
                             .long("no-confirm")
-                            .short('n')
-                            .help("Skip prompt."),
+                            .short('y')
+                            .help("Skip confirmation prompt."),
                     )
                     .arg(
                         Arg::new("no-backup")
@@ -185,7 +185,6 @@ Example: dotfiles git -- status",
                 }
 
                 if matches.is_present("home") {
-                    handler.confirm(true);
                     handler.copy_to_home()?;
                 } else {
                     handler.copy_to_repo()?;

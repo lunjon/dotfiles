@@ -1,5 +1,4 @@
 # DotFiles
-
 CLI tool for managing dotfiles in your home directory.
 
 ## Usage
@@ -21,5 +20,4 @@ When `~/dotfiles.y[a]ml`  exists, you can use the following sub-commands:
 - `dotf git -- <...>`: run arbitrary git command in the repository
 
 ## Limitations
-
 - Only files relative to home directory is supported
