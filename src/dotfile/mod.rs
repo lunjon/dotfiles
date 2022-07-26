@@ -9,6 +9,9 @@ use std::{fmt, fs};
 
 #[cfg(test)]
 mod tests;
+mod entry;
+
+use entry::{Entry, Status};
 
 /// Dotfile represents the ~/dotfiles.yml file (called DF),
 /// i.e the specification the user creates.
@@ -298,7 +301,7 @@ impl Handler {
                 continue;
             }
 
-            let mut make_entry = |h: PathBuf, r: PathBuf| -> Result<()> {
+            let mut add_entry = |h: PathBuf, r: PathBuf| -> Result<()> {
                 if let Some(entry) = self.make_entry(h, r)? {
                     entries.push(entry);
                 }
@@ -313,7 +316,7 @@ impl Handler {
                     let mut r = PathBuf::from(&repo_path);
                     r.push(&file);
 
-                    make_entry(h, r)?;
+                    add_entry(h, r)?;
                 }
                 Ok(())
             };
@@ -322,13 +325,13 @@ impl Handler {
                 if repo_path.is_dir() {
                     expand(&repo_path)?;
                 } else {
-                    make_entry(home_path, repo_path)?;
+                    add_entry(home_path, repo_path)?;
                 }
             } else if !repo_path.exists() {
                 if home_path.is_dir() {
                     expand(&home_path)?;
                 } else {
-                    make_entry(home_path, repo_path)?;
+                    add_entry(home_path, repo_path)?;
                 }
             } else {
                 // Both paths exist
@@ -349,10 +352,10 @@ impl Handler {
                         let mut r = PathBuf::from(&repo_path);
                         r.push(&file);
 
-                        make_entry(h, r)?;
+                        add_entry(h, r)?;
                     }
                 } else {
-                    make_entry(home_path, repo_path)?;
+                    add_entry(home_path, repo_path)?;
                 }
             }
         }
@@ -424,66 +427,6 @@ impl Handler {
             }
         }
         Ok(files)
-    }
-}
-
-struct Entry {
-    name: String,
-    status: Status,
-    home_path: PathBuf,
-    repo_path: PathBuf,
-}
-
-impl Entry {
-    fn new(name: &str, status: Status, home_path: PathBuf, repo_path: PathBuf) -> Self {
-        Self {
-            name: name.to_string(),
-            status,
-            home_path,
-            repo_path,
-        }
-    }
-
-    #[cfg(test)]
-    #[allow(dead_code)]
-    fn is_invalid(&self) -> bool {
-        matches!(self.status, Status::Invalid(_))
-    }
-
-    fn is_ok(&self) -> bool {
-        matches!(self.status, Status::Ok)
-    }
-
-    fn is_diff(&self) -> bool {
-        matches!(self.status, Status::Diff)
-    }
-}
-
-impl fmt::Display for Entry {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", self.status, self.name)
-    }
-}
-
-pub enum Status {
-    Ok,
-    Diff,
-    MissingHome,
-    MissingRepo,
-    Invalid(String),
-}
-
-impl fmt::Display for Status {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let icon = match self {
-            Status::Ok => color::green(""),
-            Status::Diff => color::yellow(""),
-            Status::Invalid(_) => color::red(""),
-            Status::MissingHome => color::yellow(""),
-            Status::MissingRepo => color::yellow(""),
-        };
-
-        write!(f, "{}", icon)
     }
 }
 
