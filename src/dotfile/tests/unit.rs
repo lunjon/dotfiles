@@ -174,7 +174,7 @@ impl Setup {
 
         let files = vec![
             Filepath("what.vim".to_string()),
-            Filepath("config/".to_string()),
+            Filepath("config/*".to_string()),
         ];
 
         let handler = Handler::new(
@@ -258,30 +258,6 @@ fn get_status_diff() {
 
     let status = fixture.handler.get_status(&home_path, &repo_path).unwrap();
     assert!(matches!(status, Status::Diff));
-}
-
-#[test]
-fn files_in_dir() {
-    let path = PathBuf::from("src/");
-    let result = Handler::files_in(&path);
-    assert!(result.is_ok());
-
-    let paths = result.unwrap();
-    assert_eq!(4, paths.len());
-}
-
-#[test]
-fn files_in_file() {
-    let path = PathBuf::from("src/lib.rs");
-    let result = Handler::files_in(&path);
-    assert!(result.is_err());
-}
-
-#[test]
-fn files_in_invalid() {
-    let path = PathBuf::from("nonexistingfile.rs");
-    let result = Handler::files_in(&path);
-    assert!(result.is_err());
 }
 
 #[test]

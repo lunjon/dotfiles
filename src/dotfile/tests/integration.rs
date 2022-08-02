@@ -67,12 +67,12 @@ impl Fixture {
         let file_handler = SystemFileHandler::default();
         let digester = Sha256Digest::default();
 
-        // TODO: add object items as well
+        // TODO: add deeper glob pattern items
         let files = vec![
             Filepath("diffed.txt".to_string()),
             Filepath("tmux.conf".to_string()),
             Filepath("init.vim".to_string()),
-            Filepath("config/".to_string()),
+            Filepath("config/*".to_string()),
             Filepath("env.toml".to_string()),
         ];
 

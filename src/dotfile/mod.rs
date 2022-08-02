@@ -2,9 +2,9 @@ use crate::color;
 use crate::files::{Digester, FileHandler};
 use crate::prompt::Prompt;
 use anyhow::{bail, Result};
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::{fmt, fs};
 
 mod entry;
 mod file;
@@ -269,24 +269,20 @@ impl Handler {
         if home_glob.is_err() || repo_glob.is_err() {
             log::warn!("Error expanding home and repo glob pattern");
             let status = Status::Invalid("invalid glob pattern".to_string());
-            let entry = Entry::new(&filepath, status, home_path, repo_path);
+            let entry = Entry::new(filepath, status, home_path, repo_path);
             return Ok(vec![entry]);
         }
 
         let mut home_files: Vec<String> = Vec::new();
-        for p in home_glob.unwrap() {
-            if let Ok(path) = p {
-                let s = path.strip_prefix(&self.home)?;
-                home_files.push(s.to_str().unwrap().to_string());
-            }
+        for p in home_glob.unwrap().flatten() {
+            let s = p.strip_prefix(&self.home)?;
+            home_files.push(s.to_str().unwrap().to_string());
         }
 
         let mut repo_files: Vec<String> = Vec::new();
-        for p in repo_glob.unwrap() {
-            if let Ok(path) = p {
-                let s = path.strip_prefix(&self.repository)?;
-                repo_files.push(s.to_str().unwrap().to_string());
-            }
+        for p in repo_glob.unwrap().flatten() {
+            let s = p.strip_prefix(&self.repository)?;
+            repo_files.push(s.to_str().unwrap().to_string());
         }
 
         let both: Vec<&String> = home_files
@@ -334,10 +330,6 @@ impl Handler {
             entries.push(entry);
         }
 
-        for e in &entries {
-            log::info!("{e}");
-        }
-
         Ok(entries)
     }
 
@@ -383,64 +375,27 @@ impl Handler {
             return Ok(vec![entry]);
         }
 
-        let mut add_entry = |h: PathBuf, r: PathBuf| -> Result<()> {
-            if let Some(entry) = self.make_entry(h, r)? {
-                entries.push(entry);
-            }
-            Ok(())
-        };
+        if home_path.is_dir() || repo_path.is_dir() {
+            let fixed = match filepath.strip_suffix('/') {
+                Some(s) => format!("{}/*", s),
+                None => format!("{}/*", filepath),
+            };
 
-        let mut expand = |dir: &PathBuf| -> Result<()> {
-            for file in Self::files_in(dir)? {
-                let mut h = PathBuf::from(&home_path);
-                h.push(&file);
-
-                let mut r = PathBuf::from(&repo_path);
-                r.push(&file);
-
-                add_entry(h, r)?;
-            }
-            Ok(())
-        };
-
-        if !home_path.exists() {
-            if repo_path.is_dir() {
-                expand(&repo_path)?;
-            } else {
-                add_entry(home_path, repo_path)?;
-            }
-        } else if !repo_path.exists() {
-            if home_path.is_dir() {
-                expand(&home_path)?;
-            } else {
-                add_entry(home_path, repo_path)?;
-            }
-        } else {
-            // Both paths exist
-            if home_path.is_dir() {
-                let mut files = Vec::new();
-                let mut files_at_home = Self::files_in(&home_path)?;
-                let mut files_at_repo = Self::files_in(&repo_path)?;
-
-                files.append(&mut files_at_home);
-                files.append(&mut files_at_repo);
-                files.sort();
-                files.dedup();
-
-                for file in files {
-                    let mut h = PathBuf::from(&home_path);
-                    h.push(&file);
-
-                    let mut r = PathBuf::from(&repo_path);
-                    r.push(&file);
-
-                    add_entry(h, r)?;
-                }
-            } else {
-                add_entry(home_path, repo_path)?;
-            }
+            let entry = Entry::new(
+                &filepath,
+                Status::Invalid(format!(
+                    "use glob pattern (fix: change {} to {})",
+                    filepath, fixed,
+                )),
+                home_path,
+                repo_path,
+            );
+            return Ok(vec![entry]);
         }
 
+        if let Some(entry) = self.make_entry(home_path, repo_path)? {
+            entries.push(entry);
+        }
         Ok(entries)
     }
 
@@ -490,25 +445,6 @@ impl Handler {
         };
 
         Ok(status)
-    }
-
-    fn files_in(dir: &Path) -> Result<Vec<String>> {
-        if !dir.is_dir() {
-            bail!("{:?} was not a directory", dir);
-        }
-
-        log::debug!("Expanding directory: {}", dir.to_str().unwrap());
-
-        let mut files = Vec::new();
-        for entry in fs::read_dir(dir)? {
-            let path = entry?.path();
-            if path.is_file() {
-                let name = path.file_name().unwrap();
-                let name = name.to_str().unwrap();
-                files.push(name.to_string());
-            }
-        }
-        Ok(files)
     }
 }
 

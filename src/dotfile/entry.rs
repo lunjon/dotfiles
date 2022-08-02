@@ -36,7 +36,10 @@ impl Entry {
 
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", self.status, self.name)
+        match &self.status {
+            Status::Invalid(s) => write!(f, "{} {}: {}", self.status, self.name, s),
+            _ => write!(f, "{} {}", self.status, self.name),
+        }
     }
 }
 
