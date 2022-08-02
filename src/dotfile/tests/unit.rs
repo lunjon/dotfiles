@@ -215,16 +215,6 @@ fn copy_to_repo() {
 }
 
 #[test]
-#[should_panic]
-fn copy_to_repo_missing_source() {
-    // Arrange
-    let fixture = Setup::new().build();
-
-    // Act
-    fixture.handler.copy_to_repo().unwrap();
-}
-
-#[test]
 fn make_entries() {
     // Arrange
     let fixture = Setup::new().build();

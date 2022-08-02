@@ -172,20 +172,8 @@ impl Handler {
                     }
                     bail!("invalid entry: {}", reason);
                 }
-                Status::MissingHome if !target.is_home() => {
-                    if self.ignore_invalid {
-                        println!("Ignoring missing source: {}", entry.name);
-                        continue;
-                    }
-                    bail!("missing source: {}", entry.name);
-                }
-                Status::MissingRepo if target.is_home() => {
-                    if self.ignore_invalid {
-                        println!("Ignoring missing source: {}", entry.name);
-                        continue;
-                    }
-                    bail!("missing source: {}", entry.name);
-                }
+                Status::MissingHome if !target.is_home() => continue,
+                Status::MissingRepo if target.is_home() => continue,
                 _ => {}
             }
 
@@ -256,8 +244,101 @@ impl Handler {
         Ok(entries)
     }
 
-    fn process_glob(&self, _item: &Item) -> Result<Vec<Entry>> {
-        Ok(vec![])
+    fn process_glob(&self, item: &Item) -> Result<Vec<Entry>> {
+        if !item.is_glob() {
+            return self.process_item(item);
+        }
+
+        let mut entries = Vec::new();
+
+        let filepath = item.get_path();
+        let path = PathBuf::from(filepath);
+
+        let mut home_path = PathBuf::from(&self.home);
+        home_path.push(&path);
+
+        let mut repo_path = PathBuf::from(&self.repository);
+        repo_path.push(&path);
+
+        let home_str = home_path.to_str().unwrap();
+        let repo_str = repo_path.to_str().unwrap();
+
+        let home_glob = glob::glob(home_str);
+        let repo_glob = glob::glob(repo_str);
+
+        if home_glob.is_err() || repo_glob.is_err() {
+            log::warn!("Error expanding home and repo glob pattern");
+            let status = Status::Invalid("invalid glob pattern".to_string());
+            let entry = Entry::new(&filepath, status, home_path, repo_path);
+            return Ok(vec![entry]);
+        }
+
+        let mut home_files: Vec<String> = Vec::new();
+        for p in home_glob.unwrap() {
+            if let Ok(path) = p {
+                let s = path.strip_prefix(&self.home)?;
+                home_files.push(s.to_str().unwrap().to_string());
+            }
+        }
+
+        let mut repo_files: Vec<String> = Vec::new();
+        for p in repo_glob.unwrap() {
+            if let Ok(path) = p {
+                let s = path.strip_prefix(&self.repository)?;
+                repo_files.push(s.to_str().unwrap().to_string());
+            }
+        }
+
+        let both: Vec<&String> = home_files
+            .iter()
+            .filter(|s| repo_files.contains(s))
+            .collect();
+
+        let home_only: Vec<&String> = home_files
+            .iter()
+            .filter(|s| !repo_files.contains(s))
+            .collect();
+
+        let repo_only: Vec<&String> = repo_files
+            .iter()
+            .filter(|s| !home_files.contains(s))
+            .collect();
+
+        for s in both {
+            let mut h = PathBuf::from(&self.home);
+            h.push(s);
+
+            let mut r = PathBuf::from(&self.repository);
+            r.push(s);
+
+            if let Some(entry) = self.make_entry(h, r)? {
+                entries.push(entry);
+            }
+        }
+
+        for s in home_only {
+            let mut h = self.home.clone();
+            h.push(s);
+            let mut r = self.repository.clone();
+            r.push(s);
+            let entry = Entry::new(s, Status::MissingRepo, h, r);
+            entries.push(entry);
+        }
+
+        for s in repo_only {
+            let mut h = self.home.clone();
+            h.push(s);
+            let mut r = self.repository.clone();
+            r.push(s);
+            let entry = Entry::new(s, Status::MissingHome, h, r);
+            entries.push(entry);
+        }
+
+        for e in &entries {
+            log::info!("{e}");
+        }
+
+        Ok(entries)
     }
 
     fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {

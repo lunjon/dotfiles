@@ -18,7 +18,7 @@ impl Item {
         path.contains('*')
     }
 
-    fn get_path(&self) -> &str {
+    pub fn get_path(&self) -> &str {
         match self {
             Item::Filepath(s) => s.trim(),
             Item::Object { path, .. } => path.trim(),
