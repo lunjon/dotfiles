@@ -2,49 +2,17 @@ use crate::color;
 use crate::files::{Digester, FileHandler};
 use crate::prompt::Prompt;
 use anyhow::{bail, Result};
-use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{fmt, fs};
 
+mod dotfile;
 mod entry;
 #[cfg(test)]
 mod tests;
 
-use entry::{Entry, Status};
-
-/// Dotfile represents the ~/dotfiles.yml file (called DF),
-/// i.e the specification the user creates.
-#[derive(Debug, Deserialize)]
-pub struct Dotfile {
-    // Path to the repository.
-    repository: String,
-    // Files that should be tracked.
-    // Path can be either absolute or relative to ~/dotfiles.y[a]ml.
-    files: Vec<String>,
-}
-
-impl Dotfile {
-    pub fn from(s: &str) -> Result<Dotfile> {
-        let df: Dotfile = serde_yaml::from_str(s)?;
-
-        // Validate that repository path exists
-        let path = PathBuf::from(&df.repository);
-        if !path.exists() {
-            bail!("invalid repository path: {}", df.repository)
-        }
-
-        Ok(df)
-    }
-
-    pub fn repository(&self) -> PathBuf {
-        PathBuf::from(&self.repository)
-    }
-
-    pub fn files(self) -> Vec<String> {
-        self.files
-    }
-}
+pub use dotfile::{Dotfile, Item};
+pub use entry::{Entry, Status};
 
 pub struct Handler {
     file_handler: Box<dyn FileHandler>,
@@ -55,7 +23,7 @@ pub struct Handler {
     // The path to the repository to sync files to.
     repository: PathBuf,
     // The files read from the DF file.
-    files: Vec<String>,
+    items: Vec<Item>,
     // If a file is missing from the source (i.e where it is copied from),
     // ignore any error it is causing.
     ignore_invalid: bool,
@@ -74,7 +42,7 @@ impl Handler {
         prompt: Box<dyn Prompt>,
         home: PathBuf,
         repository: PathBuf,
-        files: Vec<String>,
+        files: Vec<Item>,
     ) -> Self {
         Self {
             backup: true,
@@ -83,7 +51,7 @@ impl Handler {
             ignore_invalid: false,
             digester,
             file_handler,
-            files,
+            items: files,
             home,
             prompt,
             repository,
@@ -271,9 +239,15 @@ impl Handler {
 
     fn make_entries(&self) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
-        for file in &self.files {
-            log::debug!("Processing file: {}", file);
-            let path = PathBuf::from(file);
+        for file in &self.items {
+            log::debug!("Processing file: {:?}", file);
+
+            let file = match &file {
+                Item::Filepath(s) => s.to_string(),
+                Item::Object(obj) => obj.path.to_string(),
+            };
+
+            let path = PathBuf::from(&file);
 
             let mut home_path = PathBuf::from(&self.home);
             home_path.push(&path);
@@ -284,7 +258,7 @@ impl Handler {
             if !path.is_relative() {
                 log::warn!("Adding {} as invalid", file);
                 let status = Status::Invalid(format!("path is not relative: {file}"));
-                let entry = Entry::new(file, status, home_path, repo_path);
+                let entry = Entry::new(&file, status, home_path, repo_path);
                 entries.push(entry);
                 continue;
             }
@@ -292,7 +266,7 @@ impl Handler {
             if !(home_path.exists() || repo_path.exists()) {
                 log::warn!("Adding {} as invalid", file);
                 let entry = Entry::new(
-                    file,
+                    &file,
                     Status::Invalid("does not exists in either home or repository".to_string()),
                     home_path,
                     repo_path,

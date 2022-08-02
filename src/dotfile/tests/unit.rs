@@ -1,5 +1,5 @@
 use super::*;
-use crate::dotfile::{Handler, Status};
+use crate::dotfile::{Handler, Item::*, Status};
 use anyhow::Result;
 use rand::{distributions::Alphanumeric, Rng};
 use std::cell::RefCell;
@@ -172,7 +172,10 @@ impl Setup {
         ]);
         context.setup().unwrap();
 
-        let files = vec!["what.vim".to_string(), "config/".to_string()];
+        let files = vec![
+            Filepath("what.vim".to_string()),
+            Filepath("config/".to_string()),
+        ];
 
         let handler = Handler::new(
             file_handler,

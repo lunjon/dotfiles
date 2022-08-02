@@ -120,7 +120,7 @@ Example: dotfiles git -- status",
                 Box::new(StdinPrompt {}),
                 home,
                 repo,
-                dotfile.files(),
+                dotfile.items(),
             ))
         };
 

@@ -1,5 +1,5 @@
 use super::unit::*;
-use crate::dotfile::{Handler, Status};
+use crate::dotfile::{Handler, Item::*, Status};
 use crate::files::{Sha256Digest, SystemFileHandler};
 use crate::prompt::Prompt;
 use anyhow::Result;
@@ -66,12 +66,14 @@ impl Fixture {
 
         let file_handler = SystemFileHandler::default();
         let digester = Sha256Digest::default();
+
+        // TODO: add object items as well
         let files = vec![
-            "diffed.txt".to_string(),
-            "tmux.conf".to_string(),
-            "init.vim".to_string(),
-            "config/".to_string(),
-            "env.toml".to_string(),
+            Filepath("diffed.txt".to_string()),
+            Filepath("tmux.conf".to_string()),
+            Filepath("init.vim".to_string()),
+            Filepath("config/".to_string()),
+            Filepath("env.toml".to_string()),
         ];
 
         let mut handler = Handler::new(
