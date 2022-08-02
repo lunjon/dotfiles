@@ -38,6 +38,7 @@ pub struct Handler {
     backup: bool,
 }
 
+// Public methods.
 impl Handler {
     pub fn new(
         file_handler: Box<dyn FileHandler>,
@@ -151,7 +152,10 @@ impl Handler {
         }
         Ok(())
     }
+}
 
+// Private methods.
+impl Handler {
     fn copy(&self, target: Target) -> Result<()> {
         let exec = !self.dryrun;
         let entries = self.make_entries()?;
@@ -242,15 +246,15 @@ impl Handler {
 
     fn make_entries(&self) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
-        for file in &self.items {
-            log::debug!("Processing file: {:?}", file);
+        for item in &self.items {
+            log::debug!("Processing file: {:?}", item);
 
-            let file = match &file {
+            let filepath = match &item {
                 Item::Filepath(s) => s.to_string(),
                 Item::Object { path, .. } => path.to_string(),
             };
 
-            let path = PathBuf::from(&file);
+            let path = PathBuf::from(&filepath);
 
             let mut home_path = PathBuf::from(&self.home);
             home_path.push(&path);
@@ -258,18 +262,23 @@ impl Handler {
             let mut repo_path = PathBuf::from(&self.repository);
             repo_path.push(&path);
 
+            if !item.valid_path() {
+                let status = Status::Invalid("path is invalid".to_string());
+                let entry = Entry::new(&filepath, status, home_path, repo_path);
+                entries.push(entry);
+                continue;
+            }
+
             if !path.is_relative() {
-                log::warn!("Adding {} as invalid", file);
-                let status = Status::Invalid(format!("path is not relative: {file}"));
-                let entry = Entry::new(&file, status, home_path, repo_path);
+                let status = Status::Invalid(format!("path is not relative: {filepath}"));
+                let entry = Entry::new(&filepath, status, home_path, repo_path);
                 entries.push(entry);
                 continue;
             }
 
             if !(home_path.exists() || repo_path.exists()) {
-                log::warn!("Adding {} as invalid", file);
                 let entry = Entry::new(
-                    &file,
+                    &filepath,
                     Status::Invalid("does not exists in either home or repository".to_string()),
                     home_path,
                     repo_path,
