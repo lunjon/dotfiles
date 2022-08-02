@@ -6,14 +6,17 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{fmt, fs};
 
-mod dotfile;
 mod entry;
+mod file;
+mod item;
 #[cfg(test)]
 mod tests;
 
-pub use dotfile::{Dotfile, Item};
 pub use entry::{Entry, Status};
+pub use file::Dotfile;
+pub use item::Item;
 
+// TODO: refactor options (boolean values) into a struct
 pub struct Handler {
     file_handler: Box<dyn FileHandler>,
     digester: Box<dyn Digester>,
@@ -244,7 +247,7 @@ impl Handler {
 
             let file = match &file {
                 Item::Filepath(s) => s.to_string(),
-                Item::Object(obj) => obj.path.to_string(),
+                Item::Object { path, .. } => path.to_string(),
             };
 
             let path = PathBuf::from(&file);
@@ -389,6 +392,7 @@ impl Handler {
         if !dir.is_dir() {
             bail!("{:?} was not a directory", dir);
         }
+
         log::debug!("Expanding directory: {}", dir.to_str().unwrap());
 
         let mut files = Vec::new();

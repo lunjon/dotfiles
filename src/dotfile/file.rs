@@ -1,19 +1,8 @@
+use super::item::Item;
 use anyhow::{bail, Result};
 use serde::Deserialize;
 use serde_yaml::{from_str, from_value, Value};
 use std::path::PathBuf;
-
-#[derive(Deserialize, Debug)]
-pub struct Obj {
-    pub path: String,
-    pub name: Option<String>,
-}
-
-#[derive(Debug)]
-pub enum Item {
-    Filepath(String),
-    Object(Obj),
-}
 
 /// Dotfile represents the ~/dotfiles.yml file (called DF),
 /// i.e the specification the user creates.
@@ -64,7 +53,10 @@ impl InternalDotfile {
                 Value::String(s) => Item::Filepath(s),
                 Value::Mapping(m) => {
                     let obj: Obj = from_value(Value::Mapping(m))?;
-                    Item::Object(obj)
+                    Item::Object {
+                        path: obj.path,
+                        name: obj.name,
+                    }
                 }
                 _ => bail!("invalid item at _"),
             };
@@ -74,4 +66,10 @@ impl InternalDotfile {
 
         Ok(items)
     }
+}
+
+#[derive(Deserialize)]
+struct Obj {
+    path: String,
+    pub name: Option<String>,
 }
