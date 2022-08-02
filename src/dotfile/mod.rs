@@ -246,56 +246,107 @@ impl Handler {
 
     fn make_entries(&self) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
+
         for item in &self.items {
-            log::debug!("Processing file: {:?}", item);
+            log::debug!("Processing item: {:?}", item);
+            let es = self.process_item(item)?;
+            entries.extend(es);
+        }
 
-            let filepath = match &item {
-                Item::Filepath(s) => s.to_string(),
-                Item::Object { path, .. } => path.to_string(),
-            };
+        Ok(entries)
+    }
 
-            let path = PathBuf::from(&filepath);
+    fn process_glob(&self, _item: &Item) -> Result<Vec<Entry>> {
+        Ok(vec![])
+    }
 
-            let mut home_path = PathBuf::from(&self.home);
-            home_path.push(&path);
+    fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
+        let mut entries = Vec::new();
 
-            let mut repo_path = PathBuf::from(&self.repository);
-            repo_path.push(&path);
+        let filepath = match &item {
+            Item::Filepath(s) => s.to_string(),
+            Item::Object { path, .. } => path.to_string(),
+        };
 
-            if !item.valid_path() {
-                let status = Status::Invalid("path is invalid".to_string());
-                let entry = Entry::new(&filepath, status, home_path, repo_path);
+        let path = PathBuf::from(&filepath);
+
+        let mut home_path = PathBuf::from(&self.home);
+        home_path.push(&path);
+
+        let mut repo_path = PathBuf::from(&self.repository);
+        repo_path.push(&path);
+
+        if !item.is_valid() {
+            let status = Status::Invalid("path is invalid".to_string());
+            let entry = Entry::new(&filepath, status, home_path, repo_path);
+            return Ok(vec![entry]);
+        }
+
+        if item.is_glob() {
+            return self.process_glob(item);
+        }
+
+        if !path.is_relative() {
+            let status = Status::Invalid(format!("path is not relative: {filepath}"));
+            let entry = Entry::new(&filepath, status, home_path, repo_path);
+            return Ok(vec![entry]);
+        }
+
+        if !(home_path.exists() || repo_path.exists()) {
+            let entry = Entry::new(
+                &filepath,
+                Status::Invalid("does not exists in either home or repository".to_string()),
+                home_path,
+                repo_path,
+            );
+            return Ok(vec![entry]);
+        }
+
+        let mut add_entry = |h: PathBuf, r: PathBuf| -> Result<()> {
+            if let Some(entry) = self.make_entry(h, r)? {
                 entries.push(entry);
-                continue;
             }
+            Ok(())
+        };
 
-            if !path.is_relative() {
-                let status = Status::Invalid(format!("path is not relative: {filepath}"));
-                let entry = Entry::new(&filepath, status, home_path, repo_path);
-                entries.push(entry);
-                continue;
+        let mut expand = |dir: &PathBuf| -> Result<()> {
+            for file in Self::files_in(dir)? {
+                let mut h = PathBuf::from(&home_path);
+                h.push(&file);
+
+                let mut r = PathBuf::from(&repo_path);
+                r.push(&file);
+
+                add_entry(h, r)?;
             }
+            Ok(())
+        };
 
-            if !(home_path.exists() || repo_path.exists()) {
-                let entry = Entry::new(
-                    &filepath,
-                    Status::Invalid("does not exists in either home or repository".to_string()),
-                    home_path,
-                    repo_path,
-                );
-                entries.push(entry);
-                continue;
+        if !home_path.exists() {
+            if repo_path.is_dir() {
+                expand(&repo_path)?;
+            } else {
+                add_entry(home_path, repo_path)?;
             }
+        } else if !repo_path.exists() {
+            if home_path.is_dir() {
+                expand(&home_path)?;
+            } else {
+                add_entry(home_path, repo_path)?;
+            }
+        } else {
+            // Both paths exist
+            if home_path.is_dir() {
+                let mut files = Vec::new();
+                let mut files_at_home = Self::files_in(&home_path)?;
+                let mut files_at_repo = Self::files_in(&repo_path)?;
 
-            let mut add_entry = |h: PathBuf, r: PathBuf| -> Result<()> {
-                if let Some(entry) = self.make_entry(h, r)? {
-                    entries.push(entry);
-                }
-                Ok(())
-            };
+                files.append(&mut files_at_home);
+                files.append(&mut files_at_repo);
+                files.sort();
+                files.dedup();
 
-            let mut expand = |dir: &PathBuf| -> Result<()> {
-                for file in Self::files_in(dir)? {
+                for file in files {
                     let mut h = PathBuf::from(&home_path);
                     h.push(&file);
 
@@ -304,45 +355,8 @@ impl Handler {
 
                     add_entry(h, r)?;
                 }
-                Ok(())
-            };
-
-            if !home_path.exists() {
-                if repo_path.is_dir() {
-                    expand(&repo_path)?;
-                } else {
-                    add_entry(home_path, repo_path)?;
-                }
-            } else if !repo_path.exists() {
-                if home_path.is_dir() {
-                    expand(&home_path)?;
-                } else {
-                    add_entry(home_path, repo_path)?;
-                }
             } else {
-                // Both paths exist
-                if home_path.is_dir() {
-                    let mut files = Vec::new();
-                    let mut files_at_home = Self::files_in(&home_path)?;
-                    let mut files_at_repo = Self::files_in(&repo_path)?;
-
-                    files.append(&mut files_at_home);
-                    files.append(&mut files_at_repo);
-                    files.sort();
-                    files.dedup();
-
-                    for file in files {
-                        let mut h = PathBuf::from(&home_path);
-                        h.push(&file);
-
-                        let mut r = PathBuf::from(&repo_path);
-                        r.push(&file);
-
-                        add_entry(h, r)?;
-                    }
-                } else {
-                    add_entry(home_path, repo_path)?;
-                }
+                add_entry(home_path, repo_path)?;
             }
         }
 
