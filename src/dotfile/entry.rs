@@ -1,6 +1,6 @@
 use crate::color;
-use std::path::PathBuf;
 use std::fmt;
+use std::path::PathBuf;
 
 pub struct Entry {
     pub name: String,

@@ -7,9 +7,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{fmt, fs};
 
+mod entry;
 #[cfg(test)]
 mod tests;
-mod entry;
 
 use entry::{Entry, Status};
 
