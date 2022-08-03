@@ -29,51 +29,54 @@ impl Fixture {
     ///       tmux.conf         <- new file
     ///       config/
     ///         spaceship.yml   <- new file
+    ///         .git            <- should be ignored
+    ///       deepglob/
+    ///         config.yml      <- not in repo
+    ///         node_modules    <- should be ignored
+    ///         .git            <- should be ignored
+    ///         src/
+    ///           file.js       <- has diff
     ///     repo/
-    ///       diffed.txt      <- has diff
-    ///       init.vim        <- no diff
-    ///       env.toml        <- not in home
+    ///       diffed.txt        <- has diff
+    ///       init.vim          <- no diff
+    ///       env.toml          <- not in home
+    ///       deepglob/
+    ///         src/
+    ///            file.js      <- has diff
     ///
     /// The tmp-* directory is removed after each test.
     fn setup() -> Self {
         let context = TestContext::new(vec![
-            FileSpec {
-                path: "ignored.txt".to_string(),
-                status: Status::MissingRepo,
-            },
-            FileSpec {
-                path: "diffed.txt".to_string(),
-                status: Status::Diff,
-            },
-            FileSpec {
-                path: "init.vim".to_string(),
-                status: Status::Ok,
-            },
-            FileSpec {
-                path: "tmux.conf".to_string(),
-                status: Status::MissingRepo,
-            },
-            FileSpec {
-                path: "config/spaceship.yml".to_string(),
-                status: Status::MissingRepo,
-            },
-            FileSpec {
-                path: "env.toml".to_string(),
-                status: Status::MissingHome,
-            },
+            FileSpec::target("ignored.txt", Status::MissingRepo),
+            FileSpec::target("diffed.txt", Status::Diff),
+            FileSpec::target("init.vim", Status::Ok),
+            FileSpec::target("tmux.conf", Status::MissingRepo),
+            FileSpec::target("config/spaceship.yml", Status::MissingRepo),
+            FileSpec::target("env.toml", Status::MissingHome),
+            FileSpec::target("deepglob/config.yml", Status::MissingRepo),
+            FileSpec::target("deepglob/src/file.js", Status::Diff),
+            FileSpec::special("deepglob/.git/config"),
+            FileSpec::special("deepglob/.git/objects/abc123"),
+            FileSpec::special("deepglob/.git/objects/def456"),
         ]);
-        context.setup().unwrap();
 
+        context.setup().unwrap();
         let file_handler = SystemFileHandler::default();
         let digester = Sha256Digest::default();
 
-        // TODO: add deeper glob pattern items
         let files = vec![
             Filepath("diffed.txt".to_string()),
             Filepath("tmux.conf".to_string()),
             Filepath("init.vim".to_string()),
-            Filepath("config/*".to_string()),
             Filepath("env.toml".to_string()),
+            Object {
+                path: "config/*".to_string(),
+                name: None,
+            },
+            Object {
+                path: "deepglob/**/*".to_string(),
+                name: Some("globber".to_string()),
+            },
         ];
 
         let mut handler = Handler::new(
@@ -116,6 +119,10 @@ fn copy_to_repo() {
     assert!(spaceship.exists());
     let ignored = fixture.repo_path("ignored.txt");
     assert!(!ignored.exists());
+    let config_file = fixture.repo_path("deepglob/config.yml");
+    assert!(config_file.exists());
+    // let git_file = fixture.repo_path("deepglob/.git/config");
+    // assert!(!git_file.exists());
 }
 
 #[test]

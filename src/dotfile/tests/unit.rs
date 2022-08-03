@@ -12,6 +12,26 @@ use std::rc::Rc;
 pub struct FileSpec {
     pub path: String,
     pub status: Status,
+    // Used for creating e.g .git folders in home path.
+    pub special: bool,
+}
+
+impl FileSpec {
+    pub fn target(path: &str, status: Status) -> Self {
+        Self {
+            path: path.to_string(),
+            status,
+            special: false,
+        }
+    }
+
+    pub fn special(path: &str) -> Self {
+        Self {
+            path: path.to_string(),
+            status: Status::Ok,
+            special: true,
+        }
+    }
 }
 
 fn random_string(size: usize) -> String {
@@ -59,39 +79,43 @@ impl TestContext {
 
     pub fn setup(&self) -> Result<()> {
         for spec in self.file_specs.iter() {
+            if spec.special {
+                let mut h = self.home_dir.clone();
+                h.push(&spec.path);
+                let content = random_string(10);
+                create_with_path(&h, &content)?;
+                continue;
+            }
+
             match spec.status {
                 Status::Ok => {
-                    let path = PathBuf::from(&spec.path);
                     let mut h = self.home_dir.clone();
-                    h.push(&path);
+                    h.push(&spec.path);
                     let mut r = self.repo_dir.clone();
-                    r.push(&path);
+                    r.push(&spec.path);
                     let content = random_string(10);
                     create_with_path(&h, &content)?;
                     create_with_path(&r, &content)?;
                 }
                 Status::Diff => {
-                    let path = PathBuf::from(&spec.path);
                     let mut h = self.home_dir.clone();
-                    h.push(&path);
+                    h.push(&spec.path);
                     let mut r = self.repo_dir.clone();
-                    r.push(&path);
+                    r.push(&spec.path);
                     let content = random_string(10);
                     create_with_path(&h, &content)?;
                     let content = random_string(10);
                     create_with_path(&r, &content)?;
                 }
                 Status::MissingHome => {
-                    let path = PathBuf::from(&spec.path);
                     let mut r = self.repo_dir.clone();
-                    r.push(&path);
+                    r.push(&spec.path);
                     let content = random_string(10);
                     create_with_path(&r, &content)?;
                 }
                 Status::MissingRepo => {
-                    let path = PathBuf::from(&spec.path);
                     let mut h = self.home_dir.clone();
-                    h.push(&path);
+                    h.push(&spec.path);
                     let content = random_string(10);
                     create_with_path(&h, &content)?;
                 }
@@ -157,18 +181,9 @@ impl Setup {
         let prompt = Box::new(PromptMock {});
 
         let context = TestContext::new(vec![
-            FileSpec {
-                path: "what.vim".to_string(),
-                status: Status::MissingHome,
-            },
-            FileSpec {
-                path: "config/init.vim".to_string(),
-                status: Status::Ok,
-            },
-            FileSpec {
-                path: "config/spaceship.yml".to_string(),
-                status: Status::Diff,
-            },
+            FileSpec::target("what.vim", Status::MissingHome),
+            FileSpec::target("config/init.vim", Status::Ok),
+            FileSpec::target("config/spaceship.yml", Status::Diff),
         ]);
         context.setup().unwrap();
 
@@ -280,100 +295,4 @@ fn create_with_path_dir() {
     // Assert
     assert!(path.exists());
     fs::remove_dir_all("newdir").unwrap();
-}
-
-#[test]
-fn testcontext_setup_drop() {
-    let t: PathBuf;
-    let h: PathBuf;
-    let r: PathBuf;
-
-    {
-        let context = TestContext::new(vec![FileSpec {
-            status: Status::Ok,
-            path: "file.rs".to_string(),
-        }]);
-        t = context.temp_dir.clone();
-        h = context.home_dir.clone();
-        r = context.repo_dir.clone();
-
-        context.setup().unwrap();
-        assert!(t.exists());
-        assert!(h.exists());
-        assert!(r.exists());
-    }
-
-    assert!(!t.exists());
-    assert!(!h.exists());
-    assert!(!r.exists());
-}
-
-#[test]
-fn testcontext_ok() {
-    let context = TestContext::new(vec![FileSpec {
-        path: "file.txt".to_string(),
-        status: Status::Ok,
-    }]);
-    context.setup().unwrap();
-
-    let home = context.home_path("file.txt");
-    assert!(home.exists());
-    let repo = context.repo_path("file.txt");
-    assert!(repo.exists());
-}
-
-#[test]
-fn testcontext_diff() {
-    let context = TestContext::new(vec![FileSpec {
-        path: "file.txt".to_string(),
-        status: Status::Diff,
-    }]);
-    context.setup().unwrap();
-
-    let home = context.home_path("file.txt");
-    assert!(home.exists());
-    let repo = context.repo_path("file.txt");
-    assert!(repo.exists());
-}
-
-#[test]
-fn testcontext_missing_home() {
-    let context = TestContext::new(vec![FileSpec {
-        path: "prefix/file.txt".to_string(),
-        status: Status::MissingHome,
-    }]);
-    context.setup().unwrap();
-
-    let home = context.home_path("prefix/file.txt");
-    assert!(!home.exists());
-    let repo = context.repo_path("prefix/file.txt");
-    assert!(repo.exists());
-}
-
-#[test]
-fn testcontext_missing_repo() {
-    let context = TestContext::new(vec![FileSpec {
-        path: "file.txt".to_string(),
-        status: Status::MissingRepo,
-    }]);
-    context.setup().unwrap();
-
-    let home = context.home_path("file.txt");
-    assert!(home.exists());
-    let repo = context.repo_path("file.txt");
-    assert!(!repo.exists());
-}
-
-#[test]
-fn testcontext_invalid() {
-    let context = TestContext::new(vec![FileSpec {
-        path: "file.txt".to_string(),
-        status: Status::Invalid("invalid".to_string()),
-    }]);
-    context.setup().unwrap();
-
-    let home = context.home_path("file.txt");
-    assert!(!home.exists());
-    let repo = context.repo_path("file.txt");
-    assert!(!repo.exists());
 }

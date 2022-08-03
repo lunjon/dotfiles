@@ -275,14 +275,18 @@ impl Handler {
 
         let mut home_files: Vec<String> = Vec::new();
         for p in home_glob.unwrap().flatten() {
-            let s = p.strip_prefix(&self.home)?;
-            home_files.push(s.to_str().unwrap().to_string());
+            if p.is_file() {
+                let s = p.strip_prefix(&self.home)?;
+                home_files.push(s.to_str().unwrap().to_string());
+            }
         }
 
         let mut repo_files: Vec<String> = Vec::new();
         for p in repo_glob.unwrap().flatten() {
-            let s = p.strip_prefix(&self.repository)?;
-            repo_files.push(s.to_str().unwrap().to_string());
+            if p.is_file() {
+                let s = p.strip_prefix(&self.repository)?;
+                repo_files.push(s.to_str().unwrap().to_string());
+            }
         }
 
         let both: Vec<&String> = home_files
@@ -300,37 +304,44 @@ impl Handler {
             .filter(|s| !home_files.contains(s))
             .collect();
 
-        for s in both {
-            let mut h = PathBuf::from(&self.home);
-            h.push(s);
-
-            let mut r = PathBuf::from(&self.repository);
-            r.push(s);
-
-            if let Some(entry) = self.make_entry(h, r)? {
-                entries.push(entry);
+        let mut add_entry = |path: &str, status: Option<Status>| -> Result<()> {
+            let h = self.join_home(path);
+            let r = self.join_repo(path);
+            match status {
+                Some(status) => {
+                    let entry = Entry::new(path, status, h, r);
+                    entries.push(entry);
+                }
+                None => {
+                    if let Some(entry) = self.make_entry(h, r)? {
+                        entries.push(entry);
+                    }
+                }
             }
+            Ok(())
+        };
+
+        for s in both {
+            add_entry(s, None)?;
         }
 
         for s in home_only {
-            let mut h = self.home.clone();
-            h.push(s);
-            let mut r = self.repository.clone();
-            r.push(s);
-            let entry = Entry::new(s, Status::MissingRepo, h, r);
-            entries.push(entry);
+            add_entry(s, Some(Status::MissingRepo))?;
         }
 
         for s in repo_only {
-            let mut h = self.home.clone();
-            h.push(s);
-            let mut r = self.repository.clone();
-            r.push(s);
-            let entry = Entry::new(s, Status::MissingHome, h, r);
-            entries.push(entry);
+            add_entry(s, Some(Status::MissingHome))?;
         }
 
         Ok(entries)
+    }
+
+    fn join_repo(&self, path: &str) -> PathBuf {
+        self.repository.join(path)
+    }
+
+    fn join_home(&self, path: &str) -> PathBuf {
+        self.home.join(path)
     }
 
     fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
@@ -342,12 +353,8 @@ impl Handler {
         };
 
         let path = PathBuf::from(&filepath);
-
-        let mut home_path = PathBuf::from(&self.home);
-        home_path.push(&path);
-
-        let mut repo_path = PathBuf::from(&self.repository);
-        repo_path.push(&path);
+        let home_path = self.join_home(&filepath);
+        let repo_path = self.join_repo(&filepath);
 
         if !item.is_valid() {
             let status = Status::Invalid("path is invalid".to_string());
