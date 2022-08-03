@@ -7,6 +7,11 @@
           ignore:
             - '*.txt'
     @end
+
+  - [ ] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.
+  - [ ] Display name from object.
+  - [ ] Add configuration options to dotfile
+  -- [ ] ...
   - [x] Ignore special directories by default when using glob: .git, node_modules, target (rust), etc.
 
 * Fix
