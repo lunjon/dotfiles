@@ -121,8 +121,8 @@ fn copy_to_repo() {
     assert!(!ignored.exists());
     let config_file = fixture.repo_path("deepglob/config.yml");
     assert!(config_file.exists());
-    // let git_file = fixture.repo_path("deepglob/.git/config");
-    // assert!(!git_file.exists());
+    let git_file = fixture.repo_path("deepglob/.git/config");
+    assert!(!git_file.exists());
 }
 
 #[test]

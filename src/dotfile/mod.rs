@@ -23,8 +23,10 @@ pub struct Handler {
     prompt: Box<dyn Prompt>,
     // The path to the users home directory.
     home: PathBuf,
+    home_str: String,
     // The path to the repository to sync files to.
     repository: PathBuf,
+    repository_str: String,
     // The files read from the DF file.
     items: Vec<Item>,
     // If a file is missing from the source (i.e where it is copied from),
@@ -36,6 +38,7 @@ pub struct Handler {
     confirm: bool,
     // When copying to home, create a backup file if it already exists.
     backup: bool,
+    ignore_patterns: Vec<glob::Pattern>,
 }
 
 // Public methods.
@@ -48,6 +51,19 @@ impl Handler {
         repository: PathBuf,
         files: Vec<Item>,
     ) -> Self {
+        let home_str = home.to_str().expect("valid home directory").to_string();
+        let repository_str = repository
+            .to_str()
+            .expect("valid repository directory")
+            .to_string();
+
+        let ignore_patterns = vec![
+            glob::Pattern::new("**/.git/**/*").unwrap(),
+            glob::Pattern::new("**/node_modules/**/*").unwrap(),
+            glob::Pattern::new("**/target/**/*").unwrap(),
+            glob::Pattern::new("*.o").unwrap(),
+        ];
+
         Self {
             backup: true,
             confirm: true,
@@ -57,8 +73,11 @@ impl Handler {
             file_handler,
             items: files,
             home,
+            home_str,
             prompt,
             repository,
+            repository_str,
+            ignore_patterns,
         }
     }
 
@@ -276,16 +295,22 @@ impl Handler {
         let mut home_files: Vec<String> = Vec::new();
         for p in home_glob.unwrap().flatten() {
             if p.is_file() {
-                let s = p.strip_prefix(&self.home)?;
-                home_files.push(s.to_str().unwrap().to_string());
+                let rel = p.strip_prefix(&self.home_str)?;
+                let s = rel.to_str().unwrap();
+                if !self.ignore(s) {
+                    home_files.push(s.to_string());
+                }
             }
         }
 
         let mut repo_files: Vec<String> = Vec::new();
         for p in repo_glob.unwrap().flatten() {
             if p.is_file() {
-                let s = p.strip_prefix(&self.repository)?;
-                repo_files.push(s.to_str().unwrap().to_string());
+                let rel = p.strip_prefix(&self.repository_str)?;
+                let s = rel.to_str().unwrap();
+                if !self.ignore(s) {
+                    repo_files.push(s.to_string());
+                }
             }
         }
 
@@ -330,18 +355,10 @@ impl Handler {
         }
 
         for s in repo_only {
-            add_entry(s, Some(Status::MissingHome))?;
+            add_entry(s, Some(Status::MissingRepo))?;
         }
 
         Ok(entries)
-    }
-
-    fn join_repo(&self, path: &str) -> PathBuf {
-        self.repository.join(path)
-    }
-
-    fn join_home(&self, path: &str) -> PathBuf {
-        self.home.join(path)
     }
 
     fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
@@ -452,6 +469,21 @@ impl Handler {
         };
 
         Ok(status)
+    }
+}
+
+// Utility functions
+impl Handler {
+    fn ignore(&self, path: &str) -> bool {
+        self.ignore_patterns.iter().any(|p| p.matches(path))
+    }
+
+    fn join_repo(&self, path: &str) -> PathBuf {
+        self.repository.join(path)
+    }
+
+    fn join_home(&self, path: &str) -> PathBuf {
+        self.home.join(path)
     }
 }
 

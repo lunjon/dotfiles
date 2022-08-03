@@ -7,7 +7,7 @@
           ignore:
             - '*.txt'
     @end
-  - [ ] Ignore special directories by default when using glob: .git, node_modules, target (rust), etc.
+  - [x] Ignore special directories by default when using glob: .git, node_modules, target (rust), etc.
 
 * Fix
   - [ ]
