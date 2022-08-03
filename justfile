@@ -1,4 +1,5 @@
-default: lint check test
+default: check test lint 
+alias i := install
 
 check:
     cargo check
@@ -11,3 +12,6 @@ fmt:
 
 lint: fmt
     cargo clippy
+
+install:
+    cargo install --path .
