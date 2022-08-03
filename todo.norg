@@ -1,0 +1,13 @@
+* Features
+  - [ ] Add field to list patterns to ignore:
+    @code yaml
+    files:
+        - name: nvim
+          path: '.config/nvim/**/*'
+          ignore:
+            - '*.txt'
+    @end
+  - [ ] Ignore special directories by default when using glob: .git, node_modules, target (rust), etc.
+
+* Fix
+  - [ ]

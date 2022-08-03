@@ -20,11 +20,9 @@ files:
   # For directory paths you can use an object
   # that includes/exludes by glob patterns.
   - path: '.config/httpcli/*'
-    include: # Optional
-      - '*.toml'
-    exclude: # Optional
+    ignore: # Optional
       - '*.db'
-  ```
+```
 
 When `~/dotfiles.y[a]ml`  exists, you can use the following sub-commands:
 - `dotf sync`: sync files between home and repository
