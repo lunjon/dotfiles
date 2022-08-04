@@ -1,6 +1,5 @@
 use super::unit::*;
 use crate::dotfile::{Handler, Item::*, Status};
-use crate::files::{Sha256Digest, SystemFileHandler};
 use crate::prompt::Prompt;
 use anyhow::Result;
 use std::path::PathBuf;
@@ -61,9 +60,6 @@ impl Fixture {
         ]);
 
         context.setup().unwrap();
-        let file_handler = SystemFileHandler::default();
-        let digester = Sha256Digest::default();
-
         let files = vec![
             Filepath("diffed.txt".to_string()),
             Filepath("tmux.conf".to_string()),
@@ -80,8 +76,6 @@ impl Fixture {
         ];
 
         let mut handler = Handler::new(
-            Box::new(file_handler),
-            Box::new(digester),
             Box::new(PromptMock {}),
             context.home_dir.clone(),
             context.repo_dir.clone(),
