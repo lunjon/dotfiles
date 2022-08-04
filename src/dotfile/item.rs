@@ -1,7 +1,14 @@
-#[derive(Debug)]
+use anyhow::Result;
+use glob::Pattern;
+
+#[derive(Clone, Debug)]
 pub enum Item {
     Filepath(String),
-    Object { path: String, name: Option<String> },
+    Object {
+        path: String,
+        name: Option<String>,
+        ignore: Option<Vec<String>>,
+    },
 }
 
 impl Item {
@@ -23,6 +30,25 @@ impl Item {
             Item::Filepath(s) => s.trim(),
             Item::Object { path, .. } => path.trim(),
         }
+    }
+
+    pub fn ignore_patterns(&self) -> Result<Option<Vec<Pattern>>> {
+        let ps = match self {
+            Item::Filepath(_) => None,
+            Item::Object { ignore, .. } => match ignore {
+                None => None,
+                Some(v) => {
+                    let mut ps = Vec::new();
+                    for s in v {
+                        let pattern = Pattern::new(s)?;
+                        ps.push(pattern);
+                    }
+                    Some(ps)
+                }
+            },
+        };
+
+        Ok(ps)
     }
 }
 

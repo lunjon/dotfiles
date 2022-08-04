@@ -1,5 +1,5 @@
 use crate::dotfile::{Dotfile, Handler};
-use crate::files::{FileHandler, Sha256Digest, SystemFileHandler};
+use crate::files;
 use crate::logging;
 use crate::prompt::StdinPrompt;
 use anyhow::{bail, Result};
@@ -108,15 +108,10 @@ Example: dotfiles git -- status",
         };
 
         let create_handler = || -> Result<Handler> {
-            let digester = Sha256Digest::default();
-            let file_handler = SystemFileHandler::default();
-
-            let dotfile = load_dotfile(&dotfile_path, &file_handler)?;
+            let dotfile = load_dotfile(&dotfile_path)?;
             let repo = dotfile.repository();
 
             Ok(Handler::new(
-                Box::new(file_handler),
-                Box::new(digester),
                 Box::new(StdinPrompt {}),
                 home,
                 repo,
@@ -145,9 +140,7 @@ Example: dotfiles git -- status",
                 handler.diff(command)?;
             }
             Some(("git", matches)) => {
-                let file_handler = SystemFileHandler::default();
-                let dotfile = load_dotfile(&dotfile_path, &file_handler)?;
-
+                let dotfile = load_dotfile(&dotfile_path)?;
                 let mut cmd = Cmd::new("git");
                 cmd.current_dir(dotfile.repository());
 
@@ -197,8 +190,8 @@ Example: dotfiles git -- status",
     }
 }
 
-fn load_dotfile(path: &Path, file_handler: &SystemFileHandler) -> Result<Dotfile> {
-    let s = file_handler.read_string(path)?;
+fn load_dotfile(path: &Path) -> Result<Dotfile> {
+    let s = files::read_string(path)?;
     let dotfile = Dotfile::from(&s)?;
     Ok(dotfile)
 }

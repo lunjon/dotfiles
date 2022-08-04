@@ -54,6 +54,7 @@ impl InternalDotfile {
                 Value::Mapping(m) => {
                     let obj: Obj = from_value(Value::Mapping(m))?;
                     Item::Object {
+                        ignore: obj.ignore,
                         path: obj.path,
                         name: obj.name,
                     }
@@ -70,6 +71,7 @@ impl InternalDotfile {
 
 #[derive(Deserialize)]
 struct Obj {
+    ignore: Option<Vec<String>>,
     path: String,
     pub name: Option<String>,
 }

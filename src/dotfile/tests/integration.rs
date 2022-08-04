@@ -1,6 +1,5 @@
 use super::unit::*;
 use crate::dotfile::{Handler, Item::*, Status};
-use crate::files::{Sha256Digest, SystemFileHandler};
 use crate::prompt::Prompt;
 use anyhow::Result;
 use std::path::PathBuf;
@@ -25,6 +24,7 @@ impl Fixture {
     ///     home/
     ///       ignored.txt       <- ignored
     ///       diffed.txt        <- has diff
+    ///       diffed.txt.backup <- should be ignored
     ///       init.vim          <- no diff
     ///       tmux.conf         <- new file
     ///       config/
@@ -34,6 +34,7 @@ impl Fixture {
     ///         config.yml      <- not in repo
     ///         node_modules    <- should be ignored
     ///         .git            <- should be ignored
+    ///         test.out        <- should be ignored
     ///         src/
     ///           file.js       <- has diff
     ///     repo/
@@ -61,9 +62,6 @@ impl Fixture {
         ]);
 
         context.setup().unwrap();
-        let file_handler = SystemFileHandler::default();
-        let digester = Sha256Digest::default();
-
         let files = vec![
             Filepath("diffed.txt".to_string()),
             Filepath("tmux.conf".to_string()),
@@ -72,16 +70,16 @@ impl Fixture {
             Object {
                 path: "config/*".to_string(),
                 name: None,
+                ignore: None,
             },
             Object {
                 path: "deepglob/**/*".to_string(),
                 name: Some("globber".to_string()),
+                ignore: Some(vec!["*.out".to_string()]),
             },
         ];
 
         let mut handler = Handler::new(
-            Box::new(file_handler),
-            Box::new(digester),
             Box::new(PromptMock {}),
             context.home_dir.clone(),
             context.repo_dir.clone(),
@@ -117,12 +115,20 @@ fn copy_to_repo() {
     assert!(result.is_ok());
     assert!(tmuxconf.exists());
     assert!(spaceship.exists());
-    let ignored = fixture.repo_path("ignored.txt");
-    assert!(!ignored.exists());
-    let config_file = fixture.repo_path("deepglob/config.yml");
-    assert!(config_file.exists());
-    let git_file = fixture.repo_path("deepglob/.git/config");
-    assert!(!git_file.exists());
+
+    let paths = [
+        (true, "tmux.conf"),
+        (true, "deepglob/config.yml"),
+        (false, "ignored.txt"),
+        (false, "diffed.txt.backup"),
+        (false, "deepglob/test.out"),
+        (false, "deepglob/.git/config"),
+    ];
+
+    for (exists, path) in paths {
+        let p = fixture.repo_path(path);
+        assert_eq!(exists, p.exists());
+    }
 }
 
 #[test]
