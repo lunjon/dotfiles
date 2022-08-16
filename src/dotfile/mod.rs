@@ -254,7 +254,7 @@ impl Handler {
         ];
 
         for item in &self.items {
-            let t = process_item(&self.home_str, &self.repository_str, &item, &patterns)?;
+            let t = process_item(&self.home_str, &self.repository_str, item, &patterns)?;
             entries.extend(t)
         }
 
@@ -350,11 +350,11 @@ fn process_glob(home: &str, repo: &str, item: &Item, patterns: &[Pattern]) -> Re
             let relative = p.strip_prefix(&home)?;
             let s = relative.to_str().unwrap();
 
-            if ignore(s, &patterns) {
+            if ignore(s, patterns) {
                 continue;
             }
 
-            if !ps.is_empty() && ignore(&s, &ps) {
+            if !ps.is_empty() && ignore(s, &ps) {
                 continue;
             }
 
@@ -368,11 +368,11 @@ fn process_glob(home: &str, repo: &str, item: &Item, patterns: &[Pattern]) -> Re
             let rel = p.strip_prefix(&repo)?;
             let s = rel.to_str().unwrap();
 
-            if ignore(s, &patterns) {
+            if ignore(s, patterns) {
                 continue;
             }
 
-            if !ps.is_empty() && ignore(&s, &ps) {
+            if !ps.is_empty() && ignore(s, &ps) {
                 continue;
             }
 
@@ -432,7 +432,7 @@ fn process_item(home: &str, repo: &str, item: &Item, patterns: &[Pattern]) -> Re
     let mut entries = Vec::new();
     let filepath = item.get_path();
 
-    let path = PathBuf::from(&filepath);
+    let path = PathBuf::from(filepath);
     let mut home_path = PathBuf::from(&home);
     home_path.push(&filepath);
     let mut repo_path = PathBuf::from(&repo);
@@ -440,7 +440,7 @@ fn process_item(home: &str, repo: &str, item: &Item, patterns: &[Pattern]) -> Re
 
     if !item.is_valid() {
         let status = Status::Invalid("path is invalid".to_string());
-        let entry = Entry::new(&filepath, status, home_path, repo_path);
+        let entry = Entry::new(filepath, status, home_path, repo_path);
         return Ok(vec![entry]);
     }
 
@@ -450,13 +450,13 @@ fn process_item(home: &str, repo: &str, item: &Item, patterns: &[Pattern]) -> Re
 
     if !path.is_relative() {
         let status = Status::Invalid(format!("path is not relative: {filepath}"));
-        let entry = Entry::new(&filepath, status, home_path, repo_path);
+        let entry = Entry::new(filepath, status, home_path, repo_path);
         return Ok(vec![entry]);
     }
 
     if !(home_path.exists() || repo_path.exists()) {
         let entry = Entry::new(
-            &filepath,
+            filepath,
             Status::Invalid("does not exists in either home or repository".to_string()),
             home_path,
             repo_path,
@@ -471,7 +471,7 @@ fn process_item(home: &str, repo: &str, item: &Item, patterns: &[Pattern]) -> Re
         };
 
         let entry = Entry::new(
-            &filepath,
+            filepath,
             Status::Invalid(format!(
                 "use glob pattern (fix: change {} to {})",
                 filepath, fixed,
