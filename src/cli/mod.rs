@@ -16,7 +16,6 @@ impl Cli {
     pub fn exec(&self) -> Result<()> {
         let matches = command!()
             .about("Simple dotfile management")
-            .subcommand_required(true)
             .arg(
                 Arg::new("log")
                     .help("Display logs.")
@@ -50,6 +49,7 @@ impl Cli {
             )
             .subcommand(
                 Command::new("status")
+                    .alias("st")
                     .about("Display the current status between home and repository.")
                     .arg(
                         Arg::new("brief")
@@ -120,6 +120,10 @@ Example: dotfiles git -- status",
         };
 
         match matches.subcommand() {
+            None => {
+                let handler = create_handler()?;
+                handler.status(false)?;
+            }
             Some(("edit", matches)) => {
                 let editor = get_editor(matches.value_of("editor"));
                 log::debug!("Editing using {}", editor);
@@ -130,7 +134,6 @@ Example: dotfiles git -- status",
             }
             Some(("status", matches)) => {
                 let handler = create_handler()?;
-
                 let brief = matches.is_present("brief");
                 handler.status(brief)?;
             }
