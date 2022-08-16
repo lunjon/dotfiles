@@ -1,4 +1,4 @@
-use crate::dotfile::{Dotfile, Handler};
+use crate::dotfile::{Dotfile, Handler, Options};
 use crate::files;
 use crate::logging;
 use crate::prompt::StdinPrompt;
@@ -158,27 +158,15 @@ Example: dotfiles git -- status",
                 cmd.status()?;
             }
             Some(("sync", matches)) => {
+                let options = Options {
+                    confirm: !matches.is_present("no-confirm"),
+                    backup: !matches.is_present("no-backup"),
+                    dryrun: matches.is_present("dryrun"),
+                    ignore_invalid: matches.is_present("ignore-missing"),
+                };
+
                 let mut handler = create_handler()?;
-
-                if matches.is_present("no-confirm") {
-                    log::info!("Setting confirm=false");
-                    handler.confirm(false);
-                }
-
-                if matches.is_present("no-backup") {
-                    log::info!("Setting backup=false");
-                    handler.backup(false);
-                }
-
-                if matches.is_present("dryrun") {
-                    log::info!("Setting dryrun=true");
-                    handler.dryrun(true);
-                }
-
-                if matches.is_present("ignore-missing") {
-                    log::info!("Setting ignore-missing=true");
-                    handler.ignore_invalid(true);
-                }
+                handler.with_options(options);
 
                 if matches.is_present("home") {
                     handler.copy_to_home()?;

@@ -1,5 +1,5 @@
 use super::unit::*;
-use crate::dotfile::{Handler, Item::*, Status};
+use crate::dotfile::{Handler, Item::*, Options, Status};
 use crate::prompt::Prompt;
 use anyhow::Result;
 use std::path::PathBuf;
@@ -85,7 +85,13 @@ impl Fixture {
             context.repo_dir.clone(),
             files,
         );
-        handler.ignore_invalid(true);
+
+        handler.with_options(Options {
+            ignore_invalid: true,
+            dryrun: false,
+            confirm: false,
+            backup: true,
+        });
 
         Self { context, handler }
     }

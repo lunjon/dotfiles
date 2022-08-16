@@ -1,5 +1,6 @@
 default: check test lint 
 alias i := install
+alias t := test
 
 check:
     cargo check
