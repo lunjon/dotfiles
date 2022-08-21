@@ -1,5 +1,5 @@
 * Features
-  - [ ] Add field to list patterns to ignore:
+  - [x] Add field to list patterns to ignore:
     @code yaml
     files:
         - name: nvim
@@ -14,5 +14,8 @@
   -- [ ] ...
   - [x] Ignore special directories by default when using glob: .git, node_modules, target (rust), etc.
 
+* CI/CD
+  - [ ] Add GH actions for building, etc.
+
 * Fix
-  - [ ]
+  - [ ] Files listed from glob pattern only shows filename, not path.
