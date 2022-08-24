@@ -255,17 +255,16 @@ impl Handler {
     fn process_glob(&self, item: &Item) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
 
-        let filepath = item.get_path();
-        let path = PathBuf::from(filepath);
+        let globpattern = item.get_path();
 
         let home_path = PathBuf::from(&self.home_str);
         let repo_path = PathBuf::from(&self.repository_str);
 
         let mut home_glob_path = PathBuf::from(&self.home_str);
-        home_glob_path.push(&path);
+        home_glob_path.push(&globpattern);
 
         let mut repo_glob_path = PathBuf::from(&self.repository_str);
-        repo_glob_path.push(&path);
+        repo_glob_path.push(&globpattern);
 
         let home_str = home_glob_path.to_str().unwrap();
         let repo_str = repo_glob_path.to_str().unwrap();
@@ -276,7 +275,7 @@ impl Handler {
         if home_glob.is_err() || repo_glob.is_err() {
             log::warn!("Error expanding home and repo glob pattern");
             let status = Status::Invalid("invalid glob pattern".to_string());
-            let entry = Entry::new(filepath, status, home_glob_path, repo_glob_path);
+            let entry = Entry::new(globpattern, status, home_glob_path, repo_glob_path);
             return Ok(vec![entry]);
         }
 
@@ -346,7 +345,7 @@ impl Handler {
                     entries.push(entry);
                 }
                 None => {
-                    if let Some(entry) = make_entry(h, r)? {
+                    if let Some(entry) = make_entry(path, h, r)? {
                         entries.push(entry);
                     }
                 }
@@ -423,7 +422,7 @@ impl Handler {
             return Ok(vec![entry]);
         }
 
-        if let Some(entry) = make_entry(home_path, repo_path)? {
+        if let Some(entry) = make_entry(filepath, home_path, repo_path)? {
             entries.push(entry);
         }
         Ok(entries)
@@ -453,21 +452,14 @@ impl fmt::Display for Target {
     }
 }
 
-fn make_entry(home_path: PathBuf, repo_path: PathBuf) -> Result<Option<Entry>> {
-    let name = match home_path.file_name() {
-        Some(p) => {
-            let s = p.to_str().unwrap();
-            if s.ends_with("backup") {
-                return Ok(None);
-            }
-            s.to_string()
-        }
-        None => return Ok(None),
-    };
+fn make_entry(filepath: &str, home_path: PathBuf, repo_path: PathBuf) -> Result<Option<Entry>> {
+    if home_path.ends_with("backup") {
+        return Ok(None);
+    }
 
     let status = get_status(&home_path, &repo_path)?;
     let entry = Entry {
-        name,
+        name: filepath.to_string(),
         status,
         home_path,
         repo_path,
