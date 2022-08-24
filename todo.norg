@@ -1,21 +1,11 @@
-* Features
-  - [x] Add field to list patterns to ignore:
-    @code yaml
-    files:
-        - name: nvim
-          path: '.config/nvim/**/*'
-          ignore:
-            - '*.txt'
-    @end
+* Fix
+  - [x] Files listed from glob pattern only shows filename, not path.
 
-  - [ ] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.
-  - [ ] Display name from object.
-  - [ ] Add configuration options to dotfile
-  -- [ ] ...
-  - [x] Ignore special directories by default when using glob: .git, node_modules, target (rust), etc.
+* Features
+  - [ ] Prefix home path with `~` instead of full absolute path
+  - [?] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.
+  - [ ] Add flag for filtering files, e.g. `--only`
+  -- Could be specified multiple times
 
 * CI/CD
   - [ ] Add GH actions for building, etc.
-
-* Fix
-  - [ ] Files listed from glob pattern only shows filename, not path.
