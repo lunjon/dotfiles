@@ -4,6 +4,26 @@ use crate::prompt::Prompt;
 use anyhow::Result;
 use std::path::PathBuf;
 
+macro_rules! item {
+    ($path:expr) => {
+        Filepath(String::from($path))
+    };
+    ($path:expr, $($x:expr),*) => {
+        {
+            let mut tmp = Vec::new();
+            $(
+                tmp.push(String::from($x));
+            )*
+
+            Object {
+                path: String::from($path),
+                name: None,
+                ignore: Some(tmp),
+            }
+        }
+    };
+}
+
 pub struct PromptMock;
 
 impl Prompt for PromptMock {
@@ -56,34 +76,28 @@ impl Fixture {
             FileSpec::target("env.toml", Status::MissingHome),
             FileSpec::target("deepglob/config.yml", Status::MissingRepo),
             FileSpec::target("deepglob/src/file.js", Status::Diff),
+            FileSpec::special("deepglob/test.out"),
             FileSpec::special("deepglob/.git/config"),
             FileSpec::special("deepglob/.git/objects/abc123"),
             FileSpec::special("deepglob/.git/objects/def456"),
         ]);
 
         context.setup().unwrap();
-        let files = vec![
-            Filepath("diffed.txt".to_string()),
-            Filepath("tmux.conf".to_string()),
-            Filepath("init.vim".to_string()),
-            Filepath("env.toml".to_string()),
-            Object {
-                path: "config/*".to_string(),
-                name: None,
-                ignore: None,
-            },
-            Object {
-                path: "deepglob/**/*".to_string(),
-                name: Some("globber".to_string()),
-                ignore: Some(vec!["*.out".to_string()]),
-            },
+
+        let items = vec![
+            item!("diffed.txt"),
+            item!("tmux.conf"),
+            item!("init.vim"),
+            item!("env.toml"),
+            item!("config/*"),
+            item!("deepglob/**/*", "*.out"),
         ];
 
         let mut handler = Handler::new(
             Box::new(PromptMock {}),
             context.home_dir.clone(),
             context.repo_dir.clone(),
-            files,
+            items,
         );
 
         handler.with_options(Options {
