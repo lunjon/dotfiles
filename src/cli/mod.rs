@@ -82,8 +82,8 @@ impl Cli {
                     .about("Run arbitrary git command in repository.")
                     .long_about(
                         "Runs an arbitrary git command in the configured repository.\
-Usage: dotfiles git -- <...>
-Example: dotfiles git -- status",
+Usage: dotf git -- <...>
+Example: dotf git -- status",
                     )
                     .arg(Arg::new("args").multiple_values(true)),
             )
@@ -99,9 +99,10 @@ Example: dotfiles git -- status",
         let dotfile_path = match get_dotfile_path(&home) {
             Some(path) => path,
             None => {
-                println!("~/dotfiles.y[a]ml not found, creating new");
+                println!("~/.config/dotfiles.toml not found, creating new");
                 let mut path = home.clone();
-                path.push("dotfiles.yml");
+                path.push(".config");
+                path.push("dotfiles.toml");
                 bootstrap(&path)?;
                 return Ok(());
             }
@@ -188,16 +189,12 @@ fn load_dotfile(path: &Path) -> Result<Dotfile> {
 }
 
 fn get_dotfile_path(home: &Path) -> Option<PathBuf> {
-    let mut a = home.to_path_buf();
-    a.push("dotfiles.yml");
+    let mut path = home.to_path_buf();
+    path.push(".config");
+    path.push("dotfiles.toml");
 
-    let mut b = home.to_path_buf();
-    b.push("dotfiles.yaml");
-
-    if a.exists() {
-        Some(a)
-    } else if b.exists() {
-        Some(b)
+    if path.exists() {
+        Some(path)
     } else {
         None
     }
@@ -213,13 +210,22 @@ fn get_home() -> Result<PathBuf> {
 fn bootstrap(path: &Path) -> Result<()> {
     let current_dir = std::env::current_dir()?;
     let current_dir = current_dir.to_str().unwrap();
-    let s = format!("repository: {current_dir} files: []");
+    let content = format!(
+        r#"repository = "{}"
+
+[files]
+vim = ".vimrc" # type string
+glob = "notes/**/*.txt" # string with glob pattern
+list = [ ".zshrc", ".bashrc" ] # list of strings
+object = {{ path = "scripts/*", ignore = [ "*.out", ".cache" ] }}"#,
+        current_dir
+    );
 
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
         .open(&path)?;
-    file.write_all(s.as_bytes())?;
+    file.write_all(content.as_bytes())?;
     Ok(())
 }
 

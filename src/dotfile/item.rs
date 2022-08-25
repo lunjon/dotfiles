@@ -6,7 +6,7 @@ pub enum Item {
     Filepath(String),
     Object {
         path: String,
-        name: Option<String>,
+        name: String,
         ignore: Option<Vec<String>>,
     },
 }

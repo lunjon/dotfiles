@@ -17,7 +17,7 @@ macro_rules! item {
 
             Object {
                 path: String::from($path),
-                name: None,
+                name: String::from("FIXME"),
                 ignore: Some(tmp),
             }
         }
