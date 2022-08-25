@@ -3,16 +3,17 @@ use std::fmt;
 use std::path::PathBuf;
 
 pub struct Entry {
-    pub name: String,
+    // The relative filepath for the dotfile, e.g .gitconfig
+    pub relpath: String,
     pub status: Status,
     pub home_path: PathBuf,
     pub repo_path: PathBuf,
 }
 
 impl Entry {
-    pub fn new(name: &str, status: Status, home_path: PathBuf, repo_path: PathBuf) -> Self {
+    pub fn new(relpath: &str, status: Status, home_path: PathBuf, repo_path: PathBuf) -> Self {
         Self {
-            name: name.to_string(),
+            relpath: relpath.to_string(),
             status,
             home_path,
             repo_path,
@@ -37,8 +38,8 @@ impl Entry {
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.status {
-            Status::Invalid(s) => write!(f, "{} {}: {}", self.status, self.name, s),
-            _ => write!(f, "{} {}", self.status, self.name),
+            Status::Invalid(s) => write!(f, "{} {}: {}", self.status, self.relpath, s),
+            _ => write!(f, "{} {}", self.status, self.relpath),
         }
     }
 }

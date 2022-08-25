@@ -2,7 +2,7 @@
   - [x] Files listed from glob pattern only shows filename, not path.
 
 * Features
-  - [ ] Prefix home path with `~` instead of full absolute path
+  - [x] Prefix home path with `~` instead of full absolute path
   - [ ] Move `~/dotfiles.yml` to `.config/dotfiles.toml`
   - [?] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.
   - [ ] Add flag for filtering files, e.g. `--only`

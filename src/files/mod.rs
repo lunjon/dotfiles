@@ -18,6 +18,7 @@ pub fn digest(data: &[u8]) -> Result<String> {
 }
 
 pub fn copy(src: &Path, dst: &Path) -> Result<()> {
+    log::debug!("Copy: {:?} to {:?}", src, dst);
     fs::copy(&src, &dst)?;
     Ok(())
 }

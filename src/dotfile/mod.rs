@@ -172,7 +172,7 @@ impl Handler {
         for entry in entries {
             match entry.status {
                 Status::Ok => {
-                    log::info!("{} ok", entry.name);
+                    log::info!("{} ok", entry.relpath);
                     continue;
                 }
                 Status::Invalid(reason) => {
@@ -186,23 +186,23 @@ impl Handler {
                 _ => {}
             }
 
-            let (src, dst) = match target {
-                Target::Home => (entry.repo_path, entry.home_path),
-                Target::Repo => (entry.home_path, entry.repo_path),
+            let (display_name, src, dst) = match target {
+                Target::Home => {
+                    let s = format!("~/{}", entry.relpath);
+                    (s, entry.repo_path, entry.home_path)
+                }
+                Target::Repo => {
+                    let s = entry.repo_path.to_str().expect("valid path");
+                    (s.to_string(), entry.home_path, entry.repo_path)
+                }
             };
 
             let src_str = src.to_str().unwrap();
             let dst_str = dst.to_str().unwrap();
 
             if self.options.confirm {
-                let msg = format!(
-                    "Copy {} to {}?",
-                    color::green(src_str),
-                    color::blue(dst_str)
-                );
-                let ok = self.prompt.confirm(&msg, false)?;
-
-                if !ok {
+                let msg = format!("Write {}?", color::blue(&display_name));
+                if !self.prompt.confirm(&msg, false)? {
                     log::info!("Skipping {}", src_str);
                     continue;
                 }
@@ -214,9 +214,8 @@ impl Handler {
             };
 
             if !dir.exists() && exec {
-                let dir = dir.to_path_buf();
-                log::info!("Creating directory: {}", dir.to_str().unwrap());
-                files::create_dirs(&dir)?;
+                log::info!("Creating directory: {:?}", dir);
+                files::create_dirs(dir)?;
             }
 
             if exec {
@@ -228,14 +227,13 @@ impl Handler {
                     backup.set_file_name(filename);
 
                     files::copy(&dst, &backup)?;
-
                     log::debug!("Created backup of {}", dst_str);
                 }
-                log::debug!("Copy: {} to {}", src_str, dst_str);
+
                 files::copy(&src, &dst)?;
             }
 
-            println!("  {} {}", color::green(""), &entry.name);
+            println!("  {} {}", color::green(""), &entry.relpath);
         }
 
         Ok(())
@@ -442,7 +440,7 @@ impl Handler {
 
         let status = get_status(&home_path, &repo_path)?;
         let entry = Entry {
-            name: filepath.to_string(),
+            relpath: filepath.to_string(),
             status,
             home_path,
             repo_path,
