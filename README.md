@@ -2,6 +2,8 @@
 
 CLI tool for managing dotfiles in your home directory.
 
+![dotfiles](https://user-images.githubusercontent.com/14161483/186741239-8e8f26d5-51f9-4ab5-a6d5-09a639334e74.png)
+
 ## Usage
 
 `dotf` uses `~/.config/dotfiles.toml`, called the _dotfile_, to manage dotfiles.
