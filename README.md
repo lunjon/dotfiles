@@ -8,10 +8,15 @@ CLI tool for managing dotfiles in your home directory.
 
 - It's fast
 - Easy-to-use interface for managing your dotfiles:
-  - `dotf status`: see current status of files tracked
-  - `dotf sync`: sync files between home and repository
-  - `dotf edit`: edit the dotfile in your favorite editor
-  - `dotf git`: run arbitrary git commands in the configured repository to sync files to
+- Configuration file in flexible format using TOML
+
+## Installation
+
+Currently you need to clone the repository and install with cargo:
+
+```sh
+$ cargo install --path .
+```
 
 ## Usage
 
@@ -33,9 +38,10 @@ list = [ ".zshrc", ".bashrc" ] # List of filepaths
 object = { path = "scripts/*", ignore = [ "*.out", ".cache" ] }
 ```
 
-When `~/dotfiles.y[a]ml`  exists, you can use the following sub-commands:
-- `dotf sync`: sync files between home and repository
-  - Use `dotf sync --home` to sync from repository to home
-- `dotf status`: show the current status of the tracked files
-- `dotf edit`: edit the dotfile
-- `dotf git -- <...>`: run arbitrary git command in the repository
+Example of sub-commands:
+  - `dotf status`: see current status of files tracked
+  - `dotf sync`: sync files between home and repository
+  - `dotf edit`: edit the dotfile in your favorite editor
+  - `dotf git`: run arbitrary git commands in the configured repository to sync files to
+
+For more information use `dotf --help`.
