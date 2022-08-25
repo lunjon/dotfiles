@@ -14,9 +14,11 @@ repository = "string"
 [files]
 # Files relative to your home directory that you wish to track.
 # Examples:
-vim = ".vimrc" # type string
-glob = "notes/**/*.txt" # string with glob pattern
-list = [ ".zshrc", ".bashrc" ] # list of strings
+vim = ".vimrc" # Simplest type, just a filepath
+glob = "notes/**/*.txt" # Glob pattern
+list = [ ".zshrc", ".bashrc" ] # List of filepaths
+# Object form. `ignore` is an optional list of glob patterns
+# to ignore.
 object = { path = "scripts/*", ignore = [ "*.out", ".cache" ] }
 ```
 
