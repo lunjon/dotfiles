@@ -79,13 +79,19 @@ impl Cli {
             )
             .subcommand(
                 Command::new("git")
+                    .trailing_var_arg(true)
                     .about("Run arbitrary git command in repository.")
                     .long_about(
                         "Runs an arbitrary git command in the configured repository.\
 Usage: dotf git -- <...>
 Example: dotf git -- status",
                     )
-                    .arg(Arg::new("args").multiple_values(true)),
+                    .arg(
+                        Arg::new("args")
+                            .takes_value(true)
+                            .multiple_values(true)
+                            .allow_hyphen_values(true),
+                    ),
             )
             .get_matches();
 
@@ -148,13 +154,10 @@ Example: dotf git -- status",
                 let mut cmd = Cmd::new("git");
                 cmd.current_dir(dotfile.repository());
 
-                match matches.values_of("args") {
-                    Some(values) => {
-                        for arg in values {
-                            cmd.arg(arg);
-                        }
+                if let Some(values) = matches.values_of("args") {
+                    for arg in values {
+                        cmd.arg(arg);
                     }
-                    None => todo!(),
                 }
                 cmd.status()?;
             }
