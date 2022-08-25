@@ -17,7 +17,7 @@ repository = "string"
 vim = ".vimrc" # type string
 glob = "notes/**/*.txt" # string with glob pattern
 list = [ ".zshrc", ".bashrc" ] # list of strings
-object = {{ path = "scripts/*", ignore = [ "*.out", ".cache" ] }}"#,
+object = { path = "scripts/*", ignore = [ "*.out", ".cache" ] }
 ```
 
 When `~/dotfiles.y[a]ml`  exists, you can use the following sub-commands:
