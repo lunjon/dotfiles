@@ -7,4 +7,5 @@
   -- Could be specified multiple times
 
 * CI/CD
-  - [ ] Add GH actions for building, etc.
+  - [x] Add GH actions for building, etc.
+  - [ ] Add workflow for releases
