@@ -241,6 +241,8 @@ impl Handler {
         Ok(())
     }
 
+    // TODO: refactor all make_entries code to its own type since
+    // it is fairly complex. Name suggestion: Indexer
     fn make_entries(&self) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
 
@@ -345,7 +347,7 @@ impl Handler {
                     entries.push(entry);
                 }
                 None => {
-                    if let Some(entry) = make_entry(path, h, r)? {
+                    if let Some(entry) = self.make_entry(path, h, r)? {
                         entries.push(entry);
                     }
                 }
@@ -422,10 +424,31 @@ impl Handler {
             return Ok(vec![entry]);
         }
 
-        if let Some(entry) = make_entry(filepath, home_path, repo_path)? {
+        if let Some(entry) = self.make_entry(filepath, home_path, repo_path)? {
             entries.push(entry);
         }
         Ok(entries)
+    }
+
+    fn make_entry(
+        &self,
+        filepath: &str,
+        home_path: PathBuf,
+        repo_path: PathBuf,
+    ) -> Result<Option<Entry>> {
+        if home_path.ends_with("backup") {
+            return Ok(None);
+        }
+
+        let status = get_status(&home_path, &repo_path)?;
+        let entry = Entry {
+            name: filepath.to_string(),
+            status,
+            home_path,
+            repo_path,
+        };
+
+        Ok(Some(entry))
     }
 }
 
@@ -450,22 +473,6 @@ impl fmt::Display for Target {
             Target::Repo => write!(f, "repo"),
         }
     }
-}
-
-fn make_entry(filepath: &str, home_path: PathBuf, repo_path: PathBuf) -> Result<Option<Entry>> {
-    if home_path.ends_with("backup") {
-        return Ok(None);
-    }
-
-    let status = get_status(&home_path, &repo_path)?;
-    let entry = Entry {
-        name: filepath.to_string(),
-        status,
-        home_path,
-        repo_path,
-    };
-
-    Ok(Some(entry))
 }
 
 fn ignore(path: &str, patterns: &[Pattern]) -> bool {
