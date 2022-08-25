@@ -3,6 +3,7 @@
 
 * Features
   - [ ] Prefix home path with `~` instead of full absolute path
+  - [ ] Move `~/dotfiles.yml` to `.config/dotfiles.toml`
   - [?] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.
   - [ ] Add flag for filtering files, e.g. `--only`
   -- Could be specified multiple times
