@@ -93,19 +93,20 @@ impl Fixture {
             item!("deepglob/**/*", "*.out"),
         ];
 
-        let mut handler = Handler::new(
-            Box::new(PromptMock {}),
-            context.home_dir.clone(),
-            context.repo_dir.clone(),
-            items,
-        );
-
-        handler.with_options(Options {
+        let options = Options {
             ignore_invalid: true,
             dryrun: false,
             confirm: false,
             backup: true,
-        });
+            only: None,
+        };
+        let handler = Handler::new(
+            Box::new(PromptMock {}),
+            context.home_dir.clone(),
+            context.repo_dir.clone(),
+            items,
+            options,
+        );
 
         Self { context, handler }
     }

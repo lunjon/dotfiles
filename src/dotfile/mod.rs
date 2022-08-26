@@ -2,7 +2,8 @@ use crate::color;
 use crate::files;
 use crate::prompt::Prompt;
 use anyhow::{bail, Result};
-use glob::Pattern;
+use glob::Pattern as GlobPattern;
+use regex::Regex;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -17,6 +18,44 @@ pub use entry::{Entry, Status};
 pub use file::Dotfile;
 pub use item::Item;
 
+enum Pattern {
+    Glob(GlobPattern),
+    Regex(Regex),
+}
+
+impl Pattern {
+    fn matches(&self, s: &str) -> bool {
+        match self {
+            Pattern::Glob(g) => g.matches(s),
+            Pattern::Regex(g) => g.is_match(s),
+        }
+    }
+}
+
+pub struct Only {
+    patterns: Vec<Pattern>,
+}
+
+impl Only {
+    pub fn from_glob(patterns: &[&str]) -> Result<Self> {
+        let mut ps = Vec::new();
+        for p in patterns {
+            let g = GlobPattern::new(p)?;
+            ps.push(Pattern::Glob(g));
+        }
+        Ok(Self { patterns: ps })
+    }
+
+    pub fn from_regex(patterns: &[&str]) -> Result<Self> {
+        let mut ps = Vec::new();
+        for p in patterns {
+            let r = Regex::new(p)?;
+            ps.push(Pattern::Regex(r));
+        }
+        Ok(Self { patterns: ps })
+    }
+}
+
 pub struct Options {
     // If a file is missing from the source (i.e where it is copied from),
     // ignore any error it is causing.
@@ -27,6 +66,8 @@ pub struct Options {
     pub confirm: bool,
     // When copying to home, create a backup file if it already exists.
     pub backup: bool,
+    // Only include files matching these patterns.
+    pub only: Option<Only>,
 }
 
 impl Default for Options {
@@ -36,6 +77,7 @@ impl Default for Options {
             dryrun: false,
             confirm: true,
             backup: true,
+            only: None,
         }
     }
 }
@@ -49,7 +91,7 @@ pub struct Handler {
     // The files read from the DF file.
     items: Vec<Item>,
     options: Options,
-    ignore_patterns: Vec<Pattern>,
+    ignore_patterns: Vec<GlobPattern>,
 }
 
 // Public methods.
@@ -59,6 +101,7 @@ impl Handler {
         home: PathBuf,
         repository: PathBuf,
         files: Vec<Item>,
+        options: Options,
     ) -> Self {
         let home_str = home.to_str().expect("valid home directory").to_string();
         let repository_str = repository
@@ -67,14 +110,14 @@ impl Handler {
             .to_string();
 
         let ignore_patterns = vec![
-            glob::Pattern::new("**/.git/**/*").unwrap(),
-            glob::Pattern::new("**/node_modules/**/*").unwrap(),
-            glob::Pattern::new("**/target/**/*").unwrap(),
-            glob::Pattern::new("*.o").unwrap(),
+            GlobPattern::new("**/.git/**/*").unwrap(),
+            GlobPattern::new("**/node_modules/**/*").unwrap(),
+            GlobPattern::new("**/target/**/*").unwrap(),
+            GlobPattern::new("*.o").unwrap(),
         ];
 
         Self {
-            options: Options::default(),
+            options,
             items: files,
             home_str,
             prompt,
@@ -249,7 +292,21 @@ impl Handler {
             entries.extend(t)
         }
 
-        Ok(entries)
+        let mut filtered = Vec::new();
+        if let Some(only) = &self.options.only {
+            for entry in entries {
+                for pattern in &only.patterns {
+                    if pattern.matches(&entry.relpath) {
+                        filtered.push(entry);
+                        break;
+                    }
+                }
+            }
+        } else {
+            filtered = entries;
+        }
+
+        Ok(filtered)
     }
 
     fn process_glob(&self, item: &Item) -> Result<Vec<Entry>> {
@@ -473,7 +530,7 @@ impl fmt::Display for Target {
     }
 }
 
-fn ignore(path: &str, patterns: &[Pattern]) -> bool {
+fn ignore(path: &str, patterns: &[GlobPattern]) -> bool {
     patterns.iter().any(|p| p.matches(path))
 }
 

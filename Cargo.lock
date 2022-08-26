@@ -92,6 +92,7 @@ dependencies = [
  "home",
  "log",
  "rand",
+ "regex",
  "ring",
  "serde",
  "serde_json",

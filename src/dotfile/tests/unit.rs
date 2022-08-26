@@ -1,5 +1,5 @@
 use super::*;
-use crate::dotfile::{Handler, Item::*, Status};
+use crate::dotfile::{Handler, Item::*, Options, Status};
 use anyhow::Result;
 use rand::{distributions::Alphanumeric, Rng};
 use std::fs;
@@ -179,6 +179,7 @@ impl Setup {
             context.home_dir.clone(),
             context.repo_dir.clone(),
             files,
+            Options::default(),
         );
 
         Fixture {

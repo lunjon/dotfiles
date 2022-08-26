@@ -1,9 +1,9 @@
-use crate::dotfile::{Dotfile, Handler, Options};
+use crate::dotfile::{Dotfile, Handler, Only, Options};
 use crate::files;
 use crate::logging;
 use crate::prompt::StdinPrompt;
 use anyhow::{bail, Result};
-use clap::{command, Arg, Command};
+use clap::{command, Arg, ArgMatches, Command};
 use std::env;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -37,6 +37,7 @@ impl Cli {
                     .arg(
                         Arg::new("no-confirm")
                             .long("no-confirm")
+                            .alias("yes")
                             .short('y')
                             .help("Skip confirmation prompt."),
                     )
@@ -45,12 +46,42 @@ impl Cli {
                             .long("no-backup")
                             .help("Do not create backups when copying to home."),
                     )
+                    .arg(
+                        Arg::new("only")
+                            .help("Only include files matching patterns specified. Pattern uses glob by default. Set --regex to use regular expressions.")
+                            .long("only")
+                            .short('o')
+                            .takes_value(true)
+                            .multiple_occurrences(true)
+                            .required(false),
+                    )
+                    .arg(
+                        Arg::new("regex")
+                            .help("Use regular expressions in patterns specified in --only.")
+                            .long("regex")
+                            .short('r')
+                    )
                     .arg(Arg::new("ignore-missing").long("ignore-missing").short('i')),
             )
             .subcommand(
                 Command::new("status")
                     .alias("st")
                     .about("Display the current status between home and repository.")
+                    .arg(
+                        Arg::new("only")
+                            .help("Only include files matching patterns specified. Pattern uses glob by default. Set --regex to use regular expressions.")
+                            .long("only")
+                            .short('o')
+                            .takes_value(true)
+                            .multiple_occurrences(true)
+                            .required(false),
+                    )
+                    .arg(
+                        Arg::new("regex")
+                            .help("Use regular expressions in patterns specified in --only.")
+                            .long("regex")
+                            .short('r')
+                    )
                     .arg(
                         Arg::new("brief")
                             .long("brief")
@@ -114,7 +145,7 @@ Example: dotf git -- status",
             }
         };
 
-        let create_handler = || -> Result<Handler> {
+        let create_handler = |options| -> Result<Handler> {
             let dotfile = load_dotfile(&dotfile_path)?;
             let repo = dotfile.repository();
 
@@ -123,12 +154,13 @@ Example: dotf git -- status",
                 home,
                 repo,
                 dotfile.items(),
+                options,
             ))
         };
 
         match matches.subcommand() {
             None => {
-                let handler = create_handler()?;
+                let handler = create_handler(Options::default())?;
                 handler.status(false)?;
             }
             Some(("edit", matches)) => {
@@ -140,13 +172,14 @@ Example: dotf git -- status",
                 cmd.status()?;
             }
             Some(("status", matches)) => {
-                let handler = create_handler()?;
+                let options = get_status_options(matches)?;
+                let handler = create_handler(options)?;
                 let brief = matches.is_present("brief");
                 handler.status(brief)?;
             }
             Some(("diff", matches)) => {
                 let command = matches.value_of("command").map(|c| c.to_string());
-                let handler = create_handler()?;
+                let handler = create_handler(Options::default())?;
                 handler.diff(command)?;
             }
             Some(("git", matches)) => {
@@ -162,16 +195,8 @@ Example: dotf git -- status",
                 cmd.status()?;
             }
             Some(("sync", matches)) => {
-                let options = Options {
-                    confirm: !matches.is_present("no-confirm"),
-                    backup: !matches.is_present("no-backup"),
-                    dryrun: matches.is_present("dryrun"),
-                    ignore_invalid: matches.is_present("ignore-missing"),
-                };
-
-                let mut handler = create_handler()?;
-                handler.with_options(options);
-
+                let options = get_sync_options(matches)?;
+                let handler = create_handler(options)?;
                 if matches.is_present("home") {
                     handler.copy_to_home()?;
                 } else {
@@ -183,6 +208,43 @@ Example: dotf git -- status",
 
         Ok(())
     }
+}
+
+fn get_only(matches: &ArgMatches) -> Result<Option<Only>> {
+    match matches.values_of("only") {
+        Some(patterns) => {
+            let patterns: Vec<&str> = patterns.into_iter().collect();
+            log::debug!("Got --only: {:?}", &patterns);
+            let o = match matches.is_present("regex") {
+                true => Only::from_regex(&patterns)?,
+                false => Only::from_glob(&patterns)?,
+            };
+            Ok(Some(o))
+        }
+        None => Ok(None),
+    }
+}
+
+fn get_status_options(matches: &ArgMatches) -> Result<Options> {
+    let only = get_only(matches)?;
+    Ok(Options {
+        confirm: true,
+        backup: true,
+        dryrun: false,
+        ignore_invalid: false,
+        only,
+    })
+}
+
+fn get_sync_options(matches: &ArgMatches) -> Result<Options> {
+    let only = get_only(matches)?;
+    Ok(Options {
+        confirm: !matches.is_present("no-confirm"),
+        backup: !matches.is_present("no-backup"),
+        dryrun: matches.is_present("dryrun"),
+        ignore_invalid: matches.is_present("ignore-missing"),
+        only,
+    })
 }
 
 fn load_dotfile(path: &Path) -> Result<Dotfile> {
