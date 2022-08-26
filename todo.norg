@@ -5,6 +5,8 @@
   - [ ] Flag for displaying diff inline when running `sync`
   - [ ] Add flag for filtering files, e.g. `--only`
   -- Can be specified multiple times
+  -- Defaults to using it as glob pattern
+  -- Additional flag for saying if it is regex pattern: `--regex/-r`
   - [?] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.
 
 * CI/CD
