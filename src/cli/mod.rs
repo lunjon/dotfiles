@@ -33,7 +33,19 @@ impl Cli {
                             .long("home")
                             .help("Sync files from repository to home."),
                     )
-                    .arg(Arg::new("dryrun").long("dryrun").short('d'))
+                    .arg(Arg::new("dryrun").long("dryrun"))
+                    .arg(
+                        Arg::new("diff")
+                            .long("diff")
+                            .conflicts_with("no-confirm")
+                            .help("Display inline diffs before"),
+                    )
+                    .arg(
+                        Arg::new("diff-command")
+                            .long("diff-command")
+                            .help("Use as diff command (default: diff -u --color)")
+                            .number_of_values(1),
+                    )
                     .arg(
                         Arg::new("no-confirm")
                             .long("no-confirm")
@@ -93,9 +105,23 @@ impl Cli {
                 Command::new("diff")
                     .about("Show diff between files that do not match.")
                     .arg(
-                        Arg::new("command")
-                            .long("command")
-                            .short('c')
+                        Arg::new("only")
+                            .help("Only include files matching patterns specified. Pattern uses glob by default. Set --regex to use regular expressions.")
+                            .long("only")
+                            .short('o')
+                            .takes_value(true)
+                            .multiple_occurrences(true)
+                            .required(false),
+                    )
+                    .arg(
+                        Arg::new("regex")
+                            .help("Use regular expressions in patterns specified in --only.")
+                            .long("regex")
+                            .short('r')
+                    )
+                    .arg(
+                        Arg::new("diff-command")
+                            .long("diff-command")
                             .help("Use as diff command (default: diff -u --color)")
                             .number_of_values(1),
                     ),
@@ -178,9 +204,9 @@ Example: dotf git -- status",
                 handler.status(brief)?;
             }
             Some(("diff", matches)) => {
-                let command = matches.value_of("command").map(|c| c.to_string());
-                let handler = create_handler(Options::default())?;
-                handler.diff(command)?;
+                let options = get_diff_options(matches)?;
+                let handler = create_handler(options)?;
+                handler.diff()?;
             }
             Some(("git", matches)) => {
                 let dotfile = load_dotfile(&dotfile_path)?;
@@ -225,25 +251,58 @@ fn get_only(matches: &ArgMatches) -> Result<Option<Only>> {
     }
 }
 
-fn get_status_options(matches: &ArgMatches) -> Result<Options> {
+fn get_diff_command(matches: &ArgMatches) -> Result<Option<Vec<String>>> {
+    match matches.value_of("diff-command") {
+        Some(s) => {
+            let split: Vec<String> = s.split_whitespace().map(|s| s.to_string()).collect();
+            if split.is_empty() {
+                bail!("empty diff command")
+            }
+            Ok(Some(split))
+        }
+        None => Ok(None),
+    }
+}
+
+fn get_diff_options(matches: &ArgMatches) -> Result<Options> {
     let only = get_only(matches)?;
+    let diff_command = get_diff_command(matches)?;
     Ok(Options {
         confirm: true,
         backup: true,
         dryrun: false,
         ignore_invalid: false,
+        sync_show_diff: false,
         only,
+        diff_command,
+    })
+}
+
+fn get_status_options(matches: &ArgMatches) -> Result<Options> {
+    let only = get_only(matches)?;
+    let diff_command = get_diff_command(matches)?;
+    Ok(Options {
+        confirm: true,
+        backup: true,
+        dryrun: false,
+        ignore_invalid: false,
+        sync_show_diff: false,
+        only,
+        diff_command,
     })
 }
 
 fn get_sync_options(matches: &ArgMatches) -> Result<Options> {
     let only = get_only(matches)?;
+    let diff_command = get_diff_command(matches)?;
     Ok(Options {
         confirm: !matches.is_present("no-confirm"),
         backup: !matches.is_present("no-backup"),
         dryrun: matches.is_present("dryrun"),
         ignore_invalid: matches.is_present("ignore-missing"),
+        sync_show_diff: matches.is_present("diff"),
         only,
+        diff_command,
     })
 }
 

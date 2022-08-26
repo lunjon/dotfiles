@@ -18,6 +18,12 @@ pub use entry::{Entry, Status};
 pub use file::Dotfile;
 pub use item::Item;
 
+macro_rules! path_str {
+    ($p:expr) => {
+        $p.to_str().unwrap().to_string()
+    };
+}
+
 enum Pattern {
     Glob(GlobPattern),
     Regex(Regex),
@@ -66,8 +72,23 @@ pub struct Options {
     pub confirm: bool,
     // When copying to home, create a backup file if it already exists.
     pub backup: bool,
+    pub sync_show_diff: bool,
     // Only include files matching these patterns.
     pub only: Option<Only>,
+    pub diff_command: Option<Vec<String>>,
+}
+
+impl Options {
+    fn get_diff_command(&self) -> Result<Vec<String>> {
+        match &self.diff_command {
+            None => Ok(vec![
+                String::from("diff"),
+                String::from("-u"),
+                String::from("--color"),
+            ]),
+            Some(v) => Ok(v.to_vec()),
+        }
+    }
 }
 
 impl Default for Options {
@@ -77,7 +98,9 @@ impl Default for Options {
             dryrun: false,
             confirm: true,
             backup: true,
+            sync_show_diff: false,
             only: None,
+            diff_command: None,
         }
     }
 }
@@ -138,7 +161,7 @@ impl Handler {
         self.copy(Target::Repo)
     }
 
-    pub fn diff(&self, cmd: Option<String>) -> Result<()> {
+    pub fn diff(&self) -> Result<()> {
         let entries = self.make_entries()?;
         let entries: Vec<&Entry> = entries.iter().filter(|e| e.is_diff()).collect();
 
@@ -147,36 +170,11 @@ impl Handler {
             return Ok(());
         }
 
-        let (root, args) = match cmd {
-            Some(cstr) => {
-                log::debug!("Using custom diff command: {}", cstr);
-
-                let mut split: Vec<String> =
-                    cstr.split_whitespace().map(|s| s.to_string()).collect();
-                if split.is_empty() {
-                    bail!("empty diff command")
-                }
-
-                let first = split.remove(0);
-                (first, split)
-            }
-            None => (
-                "diff".to_string(),
-                vec!["-u".to_string(), "--color".to_string()],
-            ),
-        };
-
         for entry in entries {
-            let a = entry.home_path.to_str().expect("to get home path");
-            let b = entry.repo_path.to_str().expect("to get repo path");
+            let a = path_str!(entry.home_path);
+            let b = path_str!(entry.repo_path);
 
-            let mut cmd = Command::new(&root);
-            for arg in &args {
-                cmd.arg(arg);
-            }
-            cmd.arg(a);
-            cmd.arg(b);
-
+            let mut cmd = self.make_diff_command(&a, &b)?;
             cmd.status()?;
         }
         Ok(())
@@ -244,7 +242,15 @@ impl Handler {
             let dst_str = dst.to_str().unwrap();
 
             if self.options.confirm {
-                let msg = format!("Write {}?", color::blue(&display_name));
+                let prefix = if self.options.sync_show_diff {
+                    let mut cmd = self.make_diff_command(src_str, dst_str)?;
+                    cmd.status()?;
+                    "\n  "
+                } else {
+                    ""
+                };
+
+                let msg = format!("{}Write {}?", prefix, color::blue(&display_name));
                 if !self.prompt.confirm(&msg, false)? {
                     log::info!("Skipping {}", src_str);
                     continue;
@@ -504,6 +510,25 @@ impl Handler {
         };
 
         Ok(Some(entry))
+    }
+}
+
+impl Handler {
+    pub fn make_diff_command(&self, a: &str, b: &str) -> Result<Command> {
+        let (root, args) = {
+            let mut cmd = self.options.get_diff_command()?;
+            let first = cmd.remove(0);
+            (first, cmd)
+        };
+
+        let mut cmd = Command::new(&root);
+        for arg in &args {
+            cmd.arg(arg);
+        }
+        cmd.arg(a);
+        cmd.arg(b);
+
+        Ok(cmd)
     }
 }
 

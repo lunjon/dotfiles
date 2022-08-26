@@ -98,8 +98,11 @@ impl Fixture {
             dryrun: false,
             confirm: false,
             backup: true,
+            sync_show_diff: false,
             only: None,
+            diff_command: None,
         };
+
         let handler = Handler::new(
             Box::new(PromptMock {}),
             context.home_dir.clone(),

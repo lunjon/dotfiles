@@ -7,8 +7,9 @@ CLI tool for managing dotfiles in your home directory.
 ## Features
 
 - It's fast
-- Easy-to-use interface for managing your dotfiles:
+- Easy-to-use interface for managing your dotfiles
 - Configuration file in flexible format using TOML
+- Display diffs
 
 ## Installation
 
@@ -44,4 +45,4 @@ Example of sub-commands:
   - `dotf edit`: edit the dotfile in your favorite editor
   - `dotf git`: run arbitrary git commands in the configured repository to sync files to
 
-For more information use `dotf --help`.
+For more information use `dotf [sub-command] --help`.

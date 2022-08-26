@@ -2,7 +2,6 @@
   - [ ] ...
 
 * Features
-  - [ ] Flag for displaying diff inline when running `sync`
   - [?] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.
 
 * CI/CD
