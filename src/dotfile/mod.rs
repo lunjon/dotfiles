@@ -126,12 +126,8 @@ impl Handler {
         files: Vec<Item>,
         options: Options,
     ) -> Self {
-        let home_str = home.to_str().expect("valid home directory").to_string();
-        let repository_str = repository
-            .to_str()
-            .expect("valid repository directory")
-            .to_string();
-
+        let home_str = path_str!(home);
+        let repository_str = path_str!(repository);
         let ignore_patterns = vec![
             GlobPattern::new("**/.git/**/*").unwrap(),
             GlobPattern::new("**/node_modules/**/*").unwrap(),
@@ -233,17 +229,17 @@ impl Handler {
                     (s, entry.repo_path, entry.home_path)
                 }
                 Target::Repo => {
-                    let s = entry.repo_path.to_str().expect("valid path");
+                    let s = path_str!(entry.repo_path);
                     (s.to_string(), entry.home_path, entry.repo_path)
                 }
             };
 
-            let src_str = src.to_str().unwrap();
-            let dst_str = dst.to_str().unwrap();
+            let src_str = path_str!(src);
+            let dst_str = path_str!(dst);
 
             if self.options.confirm {
                 let prefix = if self.options.sync_show_diff {
-                    let mut cmd = self.make_diff_command(src_str, dst_str)?;
+                    let mut cmd = self.make_diff_command(&src_str, &dst_str)?;
                     cmd.status()?;
                     "\n  "
                 } else {
@@ -269,7 +265,7 @@ impl Handler {
 
             if exec {
                 if target.is_home() && dst.exists() && self.options.backup {
-                    let filename = dst.file_name().unwrap().to_str().unwrap();
+                    let filename = path_str!(dst.file_name().unwrap());
                     let filename = format!("{filename}.backup");
 
                     let mut backup = PathBuf::from(&dst);
@@ -329,11 +325,10 @@ impl Handler {
         let mut repo_glob_path = PathBuf::from(&self.repository_str);
         repo_glob_path.push(&globpattern);
 
-        let home_str = home_glob_path.to_str().unwrap();
-        let repo_str = repo_glob_path.to_str().unwrap();
-
-        let home_glob = glob::glob(home_str);
-        let repo_glob = glob::glob(repo_str);
+        let home_str = path_str!(home_glob_path);
+        let repo_str = path_str!(repo_glob_path);
+        let home_glob = glob::glob(&home_str);
+        let repo_glob = glob::glob(&repo_str);
 
         if home_glob.is_err() || repo_glob.is_err() {
             log::warn!("Error expanding home and repo glob pattern");
@@ -351,13 +346,12 @@ impl Handler {
         for p in home_glob.unwrap().flatten() {
             if p.is_file() {
                 let relative = p.strip_prefix(&self.home_str)?;
-                let s = relative.to_str().unwrap();
-
-                if ignore(s, &self.ignore_patterns) {
+                let s = path_str!(relative);
+                if ignore(&s, &self.ignore_patterns) {
                     continue;
                 }
 
-                if !ps.is_empty() && ignore(s, &ps) {
+                if !ps.is_empty() && ignore(&s, &ps) {
                     continue;
                 }
 
@@ -368,14 +362,13 @@ impl Handler {
         let mut repo_files: Vec<String> = Vec::new();
         for p in repo_glob.unwrap().flatten() {
             if p.is_file() {
-                let rel = p.strip_prefix(&self.repository_str)?;
-                let s = rel.to_str().unwrap();
-
-                if ignore(s, &self.ignore_patterns) {
+                let relative = p.strip_prefix(&self.repository_str)?;
+                let s = path_str!(relative);
+                if ignore(&s, &self.ignore_patterns) {
                     continue;
                 }
 
-                if !ps.is_empty() && ignore(s, &ps) {
+                if !ps.is_empty() && ignore(&s, &ps) {
                     continue;
                 }
 
