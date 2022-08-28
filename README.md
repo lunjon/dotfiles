@@ -34,9 +34,10 @@ repository = "string"
 vim = ".vimrc" # Simplest type, just a filepath
 glob = "notes/**/*.txt" # Glob pattern
 list = [ ".zshrc", ".bashrc" ] # List of filepaths
-# Object form. `ignore` is an optional list of glob patterns
-# to ignore.
-object = { path = "scripts/*", ignore = [ "*.out", ".cache" ] }
+# Table form (* required field):
+#   path* (string): path to use
+#   ignore ([string]): optional list of glob patterns to ignore
+table = { path = "scripts/*", ignore = [ "*.out", ".cache" ] }
 ```
 
 Example of sub-commands:
