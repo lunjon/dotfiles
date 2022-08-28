@@ -280,15 +280,14 @@ fn get_diff_options(matches: &ArgMatches) -> Result<Options> {
 
 fn get_status_options(matches: &ArgMatches) -> Result<Options> {
     let only = get_only(matches)?;
-    let diff_command = get_diff_command(matches)?;
     Ok(Options {
         confirm: true,
         backup: true,
         dryrun: false,
         ignore_invalid: false,
         sync_show_diff: false,
+        diff_command: None,
         only,
-        diff_command,
     })
 }
 

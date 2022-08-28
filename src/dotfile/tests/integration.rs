@@ -137,7 +137,6 @@ fn copy_to_repo() {
 
     // Assert
     assert!(result.is_ok());
-    assert!(tmuxconf.exists());
     assert!(spaceship.exists());
 
     let paths = [

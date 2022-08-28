@@ -1,15 +1,17 @@
 use crate::color;
 use crate::files;
+use crate::path_str;
 use crate::prompt::Prompt;
 use anyhow::{bail, Result};
 use glob::Pattern as GlobPattern;
 use regex::Regex;
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 mod entry;
 mod file;
+mod indexer;
 mod item;
 #[cfg(test)]
 mod tests;
@@ -18,12 +20,10 @@ pub use entry::{Entry, Status};
 pub use file::Dotfile;
 pub use item::Item;
 
-macro_rules! path_str {
-    ($p:expr) => {
-        $p.to_str().unwrap().to_string()
-    };
-}
+use self::indexer::Indexer;
 
+// TODO: remove after refactored into multiple handlers
+#[derive(Clone)]
 enum Pattern {
     Glob(GlobPattern),
     Regex(Regex),
@@ -38,6 +38,8 @@ impl Pattern {
     }
 }
 
+// TODO: remove after refactored into multiple handlers
+#[derive(Clone)]
 pub struct Only {
     patterns: Vec<Pattern>,
 }
@@ -106,15 +108,10 @@ impl Default for Options {
 }
 
 pub struct Handler {
+    indexer: Indexer,
     prompt: Box<dyn Prompt>,
-    // The path to the users home directory.
-    home_str: String,
-    // The path to the repository to sync files to.
-    repository_str: String,
-    // The files read from the DF file.
     items: Vec<Item>,
     options: Options,
-    ignore_patterns: Vec<GlobPattern>,
 }
 
 // Public methods.
@@ -123,25 +120,15 @@ impl Handler {
         prompt: Box<dyn Prompt>,
         home: PathBuf,
         repository: PathBuf,
-        files: Vec<Item>,
+        items: Vec<Item>,
         options: Options,
     ) -> Self {
-        let home_str = path_str!(home);
-        let repository_str = path_str!(repository);
-        let ignore_patterns = vec![
-            GlobPattern::new("**/.git/**/*").unwrap(),
-            GlobPattern::new("**/node_modules/**/*").unwrap(),
-            GlobPattern::new("**/target/**/*").unwrap(),
-            GlobPattern::new("*.o").unwrap(),
-        ];
-
+        let indexer = Indexer::new(home, repository, options.only.clone());
         Self {
             options,
-            items: files,
-            home_str,
             prompt,
-            repository_str,
-            ignore_patterns,
+            indexer,
+            items,
         }
     }
 
@@ -158,7 +145,7 @@ impl Handler {
     }
 
     pub fn diff(&self) -> Result<()> {
-        let entries = self.make_entries()?;
+        let entries = self.indexer.index(&self.items)?;
         let entries: Vec<&Entry> = entries.iter().filter(|e| e.is_diff()).collect();
 
         if entries.is_empty() {
@@ -179,7 +166,7 @@ impl Handler {
     pub fn status(&self, brief: bool) -> Result<()> {
         log::debug!("Showing status with brief={}", brief);
 
-        let entries = self.make_entries()?;
+        let entries = self.indexer.index(&self.items)?;
         let entries: Vec<&Entry> = entries.iter().filter(|e| !(brief && e.is_ok())).collect();
 
         for entry in entries {
@@ -204,7 +191,7 @@ impl Handler {
 impl Handler {
     fn copy(&self, target: Target) -> Result<()> {
         let exec = !self.options.dryrun;
-        let entries = self.make_entries()?;
+        let entries = self.indexer.index(&self.items)?;
 
         for entry in entries {
             match entry.status {
@@ -283,227 +270,6 @@ impl Handler {
 
         Ok(())
     }
-
-    // TODO: refactor all make_entries code to its own type since
-    // it is fairly complex. Name suggestion: Indexer
-    fn make_entries(&self) -> Result<Vec<Entry>> {
-        let mut entries = Vec::new();
-
-        for item in &self.items {
-            let t = self.process_item(item)?;
-            entries.extend(t)
-        }
-
-        let mut filtered = Vec::new();
-        if let Some(only) = &self.options.only {
-            for entry in entries {
-                for pattern in &only.patterns {
-                    if pattern.matches(&entry.relpath) {
-                        filtered.push(entry);
-                        break;
-                    }
-                }
-            }
-        } else {
-            filtered = entries;
-        }
-
-        Ok(filtered)
-    }
-
-    fn process_glob(&self, item: &Item) -> Result<Vec<Entry>> {
-        let mut entries = Vec::new();
-
-        let globpattern = item.get_path();
-
-        let home_path = PathBuf::from(&self.home_str);
-        let repo_path = PathBuf::from(&self.repository_str);
-
-        let mut home_glob_path = PathBuf::from(&self.home_str);
-        home_glob_path.push(&globpattern);
-
-        let mut repo_glob_path = PathBuf::from(&self.repository_str);
-        repo_glob_path.push(&globpattern);
-
-        let home_str = path_str!(home_glob_path);
-        let repo_str = path_str!(repo_glob_path);
-        let home_glob = glob::glob(&home_str);
-        let repo_glob = glob::glob(&repo_str);
-
-        if home_glob.is_err() || repo_glob.is_err() {
-            log::warn!("Error expanding home and repo glob pattern");
-            let status = Status::Invalid("invalid glob pattern".to_string());
-            let entry = Entry::new(globpattern, status, home_glob_path, repo_glob_path);
-            return Ok(vec![entry]);
-        }
-
-        let ps = match item.ignore_patterns()? {
-            None => vec![], // unnecessary allocation!
-            Some(ps) => ps,
-        };
-
-        let mut home_files: Vec<String> = Vec::new();
-        for p in home_glob.unwrap().flatten() {
-            if p.is_file() {
-                let relative = p.strip_prefix(&self.home_str)?;
-                let s = path_str!(relative);
-                if ignore(&s, &self.ignore_patterns) {
-                    continue;
-                }
-
-                if !ps.is_empty() && ignore(&s, &ps) {
-                    continue;
-                }
-
-                home_files.push(s.to_string());
-            }
-        }
-
-        let mut repo_files: Vec<String> = Vec::new();
-        for p in repo_glob.unwrap().flatten() {
-            if p.is_file() {
-                let relative = p.strip_prefix(&self.repository_str)?;
-                let s = path_str!(relative);
-                if ignore(&s, &self.ignore_patterns) {
-                    continue;
-                }
-
-                if !ps.is_empty() && ignore(&s, &ps) {
-                    continue;
-                }
-
-                repo_files.push(s.to_string());
-            }
-        }
-
-        let both: Vec<&String> = home_files
-            .iter()
-            .filter(|s| repo_files.contains(s))
-            .collect();
-
-        let home_only: Vec<&String> = home_files
-            .iter()
-            .filter(|s| !repo_files.contains(s))
-            .collect();
-
-        let repo_only: Vec<&String> = repo_files
-            .iter()
-            .filter(|s| !home_files.contains(s))
-            .collect();
-
-        let mut add_entry = |path: &str, status: Option<Status>| -> Result<()> {
-            let h = home_path.join(path);
-            let r = repo_path.join(path);
-
-            match status {
-                Some(status) => {
-                    let entry = Entry::new(path, status, h, r);
-                    entries.push(entry);
-                }
-                None => {
-                    if let Some(entry) = self.make_entry(path, h, r)? {
-                        entries.push(entry);
-                    }
-                }
-            }
-            Ok(())
-        };
-
-        for s in both {
-            add_entry(s, None)?;
-        }
-
-        for s in home_only {
-            add_entry(s, Some(Status::MissingRepo))?;
-        }
-
-        for s in repo_only {
-            add_entry(s, Some(Status::MissingRepo))?;
-        }
-
-        Ok(entries)
-    }
-
-    fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
-        let mut entries = Vec::new();
-        let filepath = item.get_path();
-
-        let path = PathBuf::from(filepath);
-        let mut home_path = PathBuf::from(&self.home_str);
-        home_path.push(&filepath);
-        let mut repo_path = PathBuf::from(&self.repository_str);
-        repo_path.push(&filepath);
-
-        if !item.is_valid() {
-            let status = Status::Invalid("path is invalid".to_string());
-            let entry = Entry::new(filepath, status, home_path, repo_path);
-            return Ok(vec![entry]);
-        }
-
-        if item.is_glob() {
-            return self.process_glob(item);
-        }
-
-        if !path.is_relative() {
-            let status = Status::Invalid(format!("path is not relative: {filepath}"));
-            let entry = Entry::new(filepath, status, home_path, repo_path);
-            return Ok(vec![entry]);
-        }
-
-        if !(home_path.exists() || repo_path.exists()) {
-            let entry = Entry::new(
-                filepath,
-                Status::Invalid("does not exists in either home or repository".to_string()),
-                home_path,
-                repo_path,
-            );
-            return Ok(vec![entry]);
-        }
-
-        if home_path.is_dir() || repo_path.is_dir() {
-            let fixed = match filepath.strip_suffix('/') {
-                Some(s) => format!("{}/*", s),
-                None => format!("{}/*", filepath),
-            };
-
-            let entry = Entry::new(
-                filepath,
-                Status::Invalid(format!(
-                    "use glob pattern (fix: change {} to {})",
-                    filepath, fixed,
-                )),
-                home_path,
-                repo_path,
-            );
-            return Ok(vec![entry]);
-        }
-
-        if let Some(entry) = self.make_entry(filepath, home_path, repo_path)? {
-            entries.push(entry);
-        }
-        Ok(entries)
-    }
-
-    fn make_entry(
-        &self,
-        filepath: &str,
-        home_path: PathBuf,
-        repo_path: PathBuf,
-    ) -> Result<Option<Entry>> {
-        if home_path.ends_with("backup") {
-            return Ok(None);
-        }
-
-        let status = get_status(&home_path, &repo_path)?;
-        let entry = Entry {
-            relpath: filepath.to_string(),
-            status,
-            home_path,
-            repo_path,
-        };
-
-        Ok(Some(entry))
-    }
 }
 
 impl Handler {
@@ -546,30 +312,4 @@ impl fmt::Display for Target {
             Target::Repo => write!(f, "repo"),
         }
     }
-}
-
-fn ignore(path: &str, patterns: &[GlobPattern]) -> bool {
-    patterns.iter().any(|p| p.matches(path))
-}
-
-fn get_status(home_path: &Path, repo_path: &Path) -> Result<Status> {
-    let status = if !home_path.exists() {
-        Status::MissingHome
-    } else if !repo_path.exists() {
-        Status::MissingRepo
-    } else {
-        let s = files::read_string(home_path)?;
-        let hash_src = files::digest(s.as_bytes())?;
-
-        let s = files::read_string(repo_path)?;
-        let hash_dst = files::digest(s.as_bytes())?;
-
-        if hash_src.eq(&hash_dst) {
-            Status::Ok
-        } else {
-            Status::Diff
-        }
-    };
-
-    Ok(status)
 }

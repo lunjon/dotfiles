@@ -1,5 +1,4 @@
-use super::*;
-use crate::dotfile::{Handler, Item::*, Options, Status};
+use crate::dotfile::Status;
 use anyhow::Result;
 use rand::{distributions::Alphanumeric, Rng};
 use std::fs;
@@ -146,94 +145,6 @@ impl Drop for TestContext {
         }
     }
 }
-
-struct Fixture {
-    _context: TestContext,
-    handler: Handler,
-}
-
-struct Setup {}
-
-impl Setup {
-    fn new() -> Self {
-        Self {}
-    }
-
-    fn build(self) -> Fixture {
-        let prompt = Box::new(PromptMock {});
-
-        let context = TestContext::new(vec![
-            FileSpec::target("what.vim", Status::MissingHome),
-            FileSpec::target("config/init.vim", Status::Ok),
-            FileSpec::target("config/spaceship.yml", Status::Diff),
-        ]);
-        context.setup().unwrap();
-
-        let files = vec![
-            Filepath("what.vim".to_string()),
-            Filepath("config/*".to_string()),
-        ];
-
-        let handler = Handler::new(
-            prompt,
-            context.home_dir.clone(),
-            context.repo_dir.clone(),
-            files,
-            Options::default(),
-        );
-
-        Fixture {
-            _context: context,
-            handler,
-        }
-    }
-}
-
-#[test]
-fn make_entries() {
-    // Arrange
-    let fixture = Setup::new().build();
-
-    // Act
-    let entries = fixture.handler.make_entries().unwrap();
-
-    // Assert
-    assert_eq!(3, entries.len());
-}
-
-// #[test]
-// fn get_status_missing_home() {
-//     let fixture = Setup::new().build();
-//     let home_path = PathBuf::from(".zshrc");
-//     let repo_path = PathBuf::from("files/.zshrc");
-
-//     match fixture.handler.get_status(&home_path, &repo_path).unwrap() {
-//         Status::MissingHome => {}
-//         _ => panic!(),
-//     }
-// }
-
-// #[test]
-// fn get_status_missing_repo() {
-//     let fixture = Setup::new().build();
-//     let home_path = PathBuf::from("Cargo.toml");
-//     let repo_path = PathBuf::from("files/Cargo.toml");
-
-//     match fixture.handler.get_status(&home_path, &repo_path).unwrap() {
-//         Status::MissingRepo => {}
-//         _ => panic!(),
-//     }
-// }
-
-// #[test]
-// fn get_status_diff() {
-//     let fixture = Setup::new().build();
-//     let home_path = PathBuf::from("Cargo.toml");
-//     let repo_path = PathBuf::from("README.md");
-
-//     let status = fixture.handler.get_status(&home_path, &repo_path).unwrap();
-//     assert!(matches!(status, Status::Diff));
-// }
 
 #[test]
 fn create_with_path_file() {
