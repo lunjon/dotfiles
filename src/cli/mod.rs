@@ -1,5 +1,6 @@
-use crate::dotfile::{Dotfile, Handler, Only, Options};
+use crate::data::Dotfile;
 use crate::files;
+use crate::handler::{DiffHandler, DiffOptions, Only, StatusHandler, SyncHandler, SyncOptions};
 use crate::logging;
 use crate::prompt::StdinPrompt;
 use anyhow::{bail, Result};
@@ -157,7 +158,7 @@ Example: dotf git -- status",
         }
 
         let home = get_home()?;
-        log::debug!("Home directory: {}", home.to_str().unwrap());
+        log::debug!("Home directory: {:?}", home);
 
         let dotfile_path = match get_dotfile_path(&home) {
             Some(path) => path,
@@ -171,22 +172,10 @@ Example: dotf git -- status",
             }
         };
 
-        let create_handler = |options| -> Result<Handler> {
-            let dotfile = load_dotfile(&dotfile_path)?;
-            let repo = dotfile.repository();
-
-            Ok(Handler::new(
-                Box::new(StdinPrompt {}),
-                home,
-                repo,
-                dotfile.items(),
-                options,
-            ))
-        };
-
         match matches.subcommand() {
             None => {
-                let handler = create_handler(Options::default())?;
+                let dotfile = load_dotfile(&dotfile_path)?;
+                let handler = StatusHandler::new(home, dotfile.repository(), dotfile.items(), None);
                 handler.status(false)?;
             }
             Some(("edit", matches)) => {
@@ -198,14 +187,18 @@ Example: dotf git -- status",
                 cmd.status()?;
             }
             Some(("status", matches)) => {
-                let options = get_status_options(matches)?;
-                let handler = create_handler(options)?;
+                let only = get_only(matches)?;
+                let dotfile = load_dotfile(&dotfile_path)?;
+                let handler = StatusHandler::new(home, dotfile.repository(), dotfile.items(), only);
                 let brief = matches.is_present("brief");
                 handler.status(brief)?;
             }
             Some(("diff", matches)) => {
+                let only = get_only(matches)?;
+                let dotfile = load_dotfile(&dotfile_path)?;
                 let options = get_diff_options(matches)?;
-                let handler = create_handler(options)?;
+                let handler =
+                    DiffHandler::new(home, dotfile.repository(), dotfile.items(), options, only);
                 handler.diff()?;
             }
             Some(("git", matches)) => {
@@ -221,8 +214,26 @@ Example: dotf git -- status",
                 cmd.status()?;
             }
             Some(("sync", matches)) => {
-                let options = get_sync_options(matches)?;
-                let handler = create_handler(options)?;
+                let dotfile = load_dotfile(&dotfile_path)?;
+                let only = get_only(matches)?;
+                let diff_options = get_diff_options(matches)?;
+                let options = SyncOptions {
+                    confirm: !matches.is_present("no-confirm"),
+                    backup: !matches.is_present("no-backup"),
+                    dryrun: matches.is_present("dryrun"),
+                    ignore_invalid: matches.is_present("ignore-missing"),
+                    show_diff: matches.is_present("diff"),
+                    diff_options,
+                };
+                let prompt = Box::new(StdinPrompt {});
+                let handler = SyncHandler::new(
+                    prompt,
+                    home,
+                    dotfile.repository(),
+                    dotfile.items(),
+                    options,
+                    only,
+                );
                 if matches.is_present("home") {
                     handler.copy_to_home()?;
                 } else {
@@ -251,58 +262,17 @@ fn get_only(matches: &ArgMatches) -> Result<Option<Only>> {
     }
 }
 
-fn get_diff_command(matches: &ArgMatches) -> Result<Option<Vec<String>>> {
+fn get_diff_options(matches: &ArgMatches) -> Result<DiffOptions> {
     match matches.value_of("diff-command") {
         Some(s) => {
             let split: Vec<String> = s.split_whitespace().map(|s| s.to_string()).collect();
             if split.is_empty() {
                 bail!("empty diff command")
             }
-            Ok(Some(split))
+            Ok(DiffOptions::new(split))
         }
-        None => Ok(None),
+        None => Ok(DiffOptions::default()),
     }
-}
-
-fn get_diff_options(matches: &ArgMatches) -> Result<Options> {
-    let only = get_only(matches)?;
-    let diff_command = get_diff_command(matches)?;
-    Ok(Options {
-        confirm: true,
-        backup: true,
-        dryrun: false,
-        ignore_invalid: false,
-        sync_show_diff: false,
-        only,
-        diff_command,
-    })
-}
-
-fn get_status_options(matches: &ArgMatches) -> Result<Options> {
-    let only = get_only(matches)?;
-    Ok(Options {
-        confirm: true,
-        backup: true,
-        dryrun: false,
-        ignore_invalid: false,
-        sync_show_diff: false,
-        diff_command: None,
-        only,
-    })
-}
-
-fn get_sync_options(matches: &ArgMatches) -> Result<Options> {
-    let only = get_only(matches)?;
-    let diff_command = get_diff_command(matches)?;
-    Ok(Options {
-        confirm: !matches.is_present("no-confirm"),
-        backup: !matches.is_present("no-backup"),
-        dryrun: matches.is_present("dryrun"),
-        ignore_invalid: matches.is_present("ignore-missing"),
-        sync_show_diff: matches.is_present("diff"),
-        only,
-        diff_command,
-    })
 }
 
 fn load_dotfile(path: &Path) -> Result<Dotfile> {

@@ -1,7 +1,8 @@
 pub mod cli;
 pub mod color;
-pub mod dotfile;
+pub mod data;
 pub mod files;
+pub mod handler;
 pub mod logging;
 pub mod prompt;
 

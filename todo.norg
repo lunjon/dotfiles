@@ -1,9 +1,6 @@
 * Fix
   - [ ] When running `sync` with `--diff` it tries to create a diff for files that doesn't exists.
   -- Example: sync from home to repo gives an error if the file doesn't exist in repo
-  - [-] Refactor `src/dotfile/mod.rs`
-  -- [ ] Split into multiple handlers for sub-commands with own option types
-  -- [x] Refactor `make_entries` stuff into own type: Indexer
 
 * Features
   - [?] Display files nested if coming from same entry, e.g. a glob pattern which lists multiple files.

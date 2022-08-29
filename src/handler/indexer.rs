@@ -1,4 +1,5 @@
-use super::{Entry, Item, Only, Status};
+use super::Only;
+use crate::data::{Entry, Item, Status};
 use crate::{files, path_str};
 use anyhow::Result;
 use glob::Pattern as GlobPattern;
@@ -57,6 +58,7 @@ impl Indexer {
             filtered = entries;
         }
 
+        filtered.sort_by(|a, b| a.relpath.partial_cmp(&b.relpath).unwrap());
         Ok(filtered)
     }
 

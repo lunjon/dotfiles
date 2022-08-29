@@ -1,4 +1,4 @@
-use crate::dotfile::Status;
+use crate::data::Status;
 use anyhow::Result;
 use rand::{distributions::Alphanumeric, Rng};
 use std::fs;

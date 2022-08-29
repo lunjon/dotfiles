@@ -82,7 +82,7 @@ struct Obj {
 }
 
 #[derive(Deserialize)]
-pub struct NewDotfile {
+struct NewDotfile {
     // Path to the repository.
     repository: String,
     files: HashMap<String, Toml>,

@@ -1,5 +1,6 @@
 use super::unit::*;
-use crate::dotfile::{Handler, Item::*, Options, Status};
+use crate::data::{Item::*, Status};
+use crate::handler::{DiffOptions, SyncHandler, SyncOptions};
 use crate::prompt::Prompt;
 use anyhow::Result;
 use std::path::PathBuf;
@@ -34,7 +35,7 @@ impl Prompt for PromptMock {
 
 struct Fixture {
     context: TestContext,
-    handler: Handler,
+    handler: SyncHandler,
 }
 
 impl Fixture {
@@ -93,22 +94,22 @@ impl Fixture {
             item!("deepglob/**/*", "*.out"),
         ];
 
-        let options = Options {
+        let options = SyncOptions {
             ignore_invalid: true,
             dryrun: false,
             confirm: false,
             backup: true,
-            sync_show_diff: false,
-            only: None,
-            diff_command: None,
+            show_diff: false,
+            diff_options: DiffOptions::default(),
         };
 
-        let handler = Handler::new(
+        let handler = SyncHandler::new(
             Box::new(PromptMock {}),
             context.home_dir.clone(),
             context.repo_dir.clone(),
             items,
             options,
+            None,
         );
 
         Self { context, handler }
