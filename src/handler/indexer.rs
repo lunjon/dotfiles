@@ -99,6 +99,7 @@ impl Indexer {
                     continue;
                 }
 
+                log::debug!("Adding home file: {s}");
                 home_files.push(s.to_string());
             }
         }
@@ -116,6 +117,7 @@ impl Indexer {
                     continue;
                 }
 
+                log::debug!("Adding repo file: {s}");
                 repo_files.push(s.to_string());
             }
         }
@@ -162,7 +164,7 @@ impl Indexer {
         }
 
         for s in repo_only {
-            add_entry(s, Some(Status::MissingRepo))?;
+            add_entry(s, Some(Status::MissingHome))?;
         }
 
         Ok(entries)
