@@ -31,6 +31,7 @@ impl Indexer {
                 GlobPattern::new("**/node_modules/**/*").unwrap(),
                 GlobPattern::new("**/target/**/*").unwrap(),
                 GlobPattern::new("*.o").unwrap(),
+                GlobPattern::new("*.backup").unwrap(),
             ],
             only,
         }
