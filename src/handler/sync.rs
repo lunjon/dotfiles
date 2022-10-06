@@ -107,7 +107,7 @@ impl SyncHandler {
             let dst_str = path_str!(dst);
 
             if self.options.confirm {
-                let prefix = if self.options.show_diff {
+                let prefix = if self.options.show_diff && matches!(entry.status, Status::Diff) {
                     let mut cmd = self.options.diff_options.to_cmd(&src_str, &dst_str)?;
                     cmd.status()?;
                     "\n  "
