@@ -37,35 +37,107 @@ impl Indexer {
         }
     }
 
-    pub fn index(&self, items: &Vec<Item>) -> Result<Vec<Entry>> {
-        let mut entries = Vec::new();
+    pub fn index(&self, items: &Vec<Item>) -> Result<Vec<(String, Vec<Entry>)>> {
+        let mut entries: Vec<(String, Vec<Entry>)> = Vec::new();
 
         for item in items {
             let t = self.process_item(item)?;
-            entries.extend(t)
-        }
 
-        let mut filtered = Vec::new();
-        if let Some(only) = &self.only {
-            for entry in entries {
-                for pattern in &only.patterns {
-                    if pattern.matches(&entry.relpath) {
+            // TODO: refactor
+            let mut filtered = Vec::new();
+            if let Some(only) = &self.only {
+                for entry in t {
+                    if let Entry::Ok { relpath, .. } = &entry {
+                        for pattern in &only.patterns {
+                            if pattern.matches(relpath) {
+                                filtered.push(entry);
+                                break;
+                            }
+                        }
+                    } else {
                         filtered.push(entry);
-                        break;
                     }
                 }
+            } else {
+                filtered = t;
             }
-        } else {
-            filtered = entries;
+
+            entries.push((item.name.clone(), filtered));
         }
 
-        filtered.sort_by(|a, b| a.relpath.partial_cmp(&b.relpath).unwrap());
-        Ok(filtered)
+        // let mut filtered = Vec::new();
+        // if let Some(only) = &self.only {
+        //     for entry in entries {
+        //         for pattern in &only.patterns {
+        //             if pattern.matches(&entry.relpath) {
+        //                 filtered.push(entry);
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     filtered = entries;
+        // }
+
+        entries.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
+        Ok(entries)
     }
 
-    fn process_glob(&self, item: &Item) -> Result<Vec<Entry>> {
+    fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
+        if !item.is_valid() {
+            let entry = Entry::new_err("invalid item".to_string());
+            return Ok(vec![entry]);
+        }
+
+        let ps = match item.ignore_patterns()? {
+            None => vec![], // unnecessary allocation?
+            Some(ps) => ps,
+        };
+
         let mut entries = Vec::new();
-        let globpattern = item.get_path();
+        for filepath in &item.files {
+            let path = PathBuf::from(filepath);
+            let home_path = self.home.join(&filepath);
+            let repo_path = self.repo.join(&filepath);
+
+            if is_glob(filepath) {
+                return self.process_glob(filepath, &ps);
+            }
+
+            if !path.is_relative() {
+                let entry = Entry::new_err(format!("path is not relative: {filepath}"));
+                return Ok(vec![entry]);
+            }
+
+            if !(home_path.exists() || repo_path.exists()) {
+                let entry =
+                    Entry::new_err("does not exists in either home or repository".to_string());
+                return Ok(vec![entry]);
+            }
+
+            if home_path.is_dir() || repo_path.is_dir() {
+                let fixed = match filepath.strip_suffix('/') {
+                    Some(s) => format!("{}/*", s),
+                    None => format!("{}/*", filepath),
+                };
+
+                let entry = Entry::new_err(format!(
+                    "use glob pattern (fix: change {} to {})",
+                    filepath, fixed,
+                ));
+                return Ok(vec![entry]);
+            }
+
+            if let Some(entry) = self.make_entry(filepath, home_path, repo_path)? {
+                entries.push(entry);
+            }
+        }
+
+        Ok(entries)
+    }
+
+    fn process_glob(&self, globpattern: &str, ps: &[GlobPattern]) -> Result<Vec<Entry>> {
+        let mut entries = Vec::new();
 
         let home_glob_path = self.home.join(&globpattern);
         let repo_glob_path = self.repo.join(&globpattern);
@@ -76,16 +148,9 @@ impl Indexer {
         let repo_glob = glob::glob(&repo_str);
 
         if home_glob.is_err() || repo_glob.is_err() {
-            log::warn!("Error expanding home and repo glob pattern");
-            let status = Status::Invalid("invalid glob pattern".to_string());
-            let entry = Entry::new(globpattern, status, home_glob_path, repo_glob_path);
+            let entry = Entry::new_err("invalid glob pattern".to_string());
             return Ok(vec![entry]);
         }
-
-        let ps = match item.ignore_patterns()? {
-            None => vec![], // unnecessary allocation?
-            Some(ps) => ps,
-        };
 
         let mut home_files: Vec<String> = Vec::new();
         for p in home_glob.unwrap().flatten() {
@@ -96,7 +161,7 @@ impl Indexer {
                     continue;
                 }
 
-                if !ps.is_empty() && ignore(&s, &ps) {
+                if !ps.is_empty() && ignore(&s, ps) {
                     continue;
                 }
 
@@ -114,7 +179,7 @@ impl Indexer {
                     continue;
                 }
 
-                if !ps.is_empty() && ignore(&s, &ps) {
+                if !ps.is_empty() && ignore(&s, ps) {
                     continue;
                 }
 
@@ -171,64 +236,6 @@ impl Indexer {
         Ok(entries)
     }
 
-    fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
-        let mut entries = Vec::new();
-        let filepath = item.get_path();
-
-        let path = PathBuf::from(filepath);
-        let home_path = self.home.join(&filepath);
-        let repo_path = self.repo.join(&filepath);
-
-        if !item.is_valid() {
-            let status = Status::Invalid("path is invalid".to_string());
-            let entry = Entry::new(filepath, status, home_path, repo_path);
-            return Ok(vec![entry]);
-        }
-
-        if item.is_glob() {
-            return self.process_glob(item);
-        }
-
-        if !path.is_relative() {
-            let status = Status::Invalid(format!("path is not relative: {filepath}"));
-            let entry = Entry::new(filepath, status, home_path, repo_path);
-            return Ok(vec![entry]);
-        }
-
-        if !(home_path.exists() || repo_path.exists()) {
-            let entry = Entry::new(
-                filepath,
-                Status::Invalid("does not exists in either home or repository".to_string()),
-                home_path,
-                repo_path,
-            );
-            return Ok(vec![entry]);
-        }
-
-        if home_path.is_dir() || repo_path.is_dir() {
-            let fixed = match filepath.strip_suffix('/') {
-                Some(s) => format!("{}/*", s),
-                None => format!("{}/*", filepath),
-            };
-
-            let entry = Entry::new(
-                filepath,
-                Status::Invalid(format!(
-                    "use glob pattern (fix: change {} to {})",
-                    filepath, fixed,
-                )),
-                home_path,
-                repo_path,
-            );
-            return Ok(vec![entry]);
-        }
-
-        if let Some(entry) = self.make_entry(filepath, home_path, repo_path)? {
-            entries.push(entry);
-        }
-        Ok(entries)
-    }
-
     fn make_entry(
         &self,
         filepath: &str,
@@ -240,13 +247,7 @@ impl Indexer {
         }
 
         let status = get_status(&home_path, &repo_path)?;
-        let entry = Entry {
-            relpath: filepath.to_string(),
-            status,
-            home_path,
-            repo_path,
-        };
-
+        let entry = Entry::new(filepath, status, home_path, repo_path);
         Ok(Some(entry))
     }
 }
@@ -275,4 +276,8 @@ fn get_status(home_path: &Path, repo_path: &Path) -> Result<Status> {
     };
 
     Ok(status)
+}
+
+pub fn is_glob(s: &str) -> bool {
+    s.contains('*')
 }

@@ -2,17 +2,20 @@ use crate::color;
 use std::fmt;
 use std::path::PathBuf;
 
-pub struct Entry {
-    // The relative filepath for the dotfile, e.g .gitconfig
-    pub relpath: String,
-    pub status: Status,
-    pub home_path: PathBuf,
-    pub repo_path: PathBuf,
+pub enum Entry {
+    Ok {
+        // The relative filepath for the dotfile, e.g .gitconfig
+        relpath: String,
+        status: Status,
+        home_path: PathBuf,
+        repo_path: PathBuf,
+    },
+    Err(String),
 }
 
 impl Entry {
     pub fn new(relpath: &str, status: Status, home_path: PathBuf, repo_path: PathBuf) -> Self {
-        Self {
+        Self::Ok {
             relpath: relpath.to_string(),
             status,
             home_path,
@@ -20,26 +23,38 @@ impl Entry {
         }
     }
 
+    pub fn new_err(reason: String) -> Self {
+        Self::Err(reason)
+    }
+
     #[cfg(test)]
     #[allow(dead_code)]
     fn is_invalid(&self) -> bool {
-        matches!(self.status, Status::Invalid(_))
+        !self.is_ok()
     }
 
     pub fn is_ok(&self) -> bool {
-        matches!(self.status, Status::Ok)
+        match self {
+            Entry::Ok { .. } => true,
+            Entry::Err(_) => false,
+        }
     }
 
     pub fn is_diff(&self) -> bool {
-        matches!(self.status, Status::Diff)
+        match self {
+            Entry::Ok { status, .. } => matches!(status, Status::Diff),
+            Entry::Err(_) => false,
+        }
     }
 }
 
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.status {
-            Status::Invalid(s) => write!(f, "{} {}: {}", self.status, self.relpath, s),
-            _ => write!(f, "{} {}", self.status, self.relpath),
+        match self {
+            Entry::Ok {
+                relpath, status, ..
+            } => write!(f, "{} {}", status, relpath),
+            Entry::Err(reason) => write!(f, "{} {}", color::red(""), reason),
         }
     }
 }
@@ -49,7 +64,6 @@ pub enum Status {
     Diff,
     MissingHome,
     MissingRepo,
-    Invalid(String),
 }
 
 impl fmt::Display for Status {
@@ -57,7 +71,6 @@ impl fmt::Display for Status {
         let icon = match self {
             Status::Ok => color::green(""),
             Status::Diff => color::yellow(""),
-            Status::Invalid(_) => color::red(""),
             Status::MissingHome => color::yellow(""),
             Status::MissingRepo => color::yellow(""),
         };

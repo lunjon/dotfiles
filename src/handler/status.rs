@@ -1,6 +1,9 @@
 use super::indexer::Indexer;
 use super::types::Only;
-use crate::data::{Entry, Item, Status};
+use crate::{
+    color,
+    data::{Entry, Item, Status},
+};
 use anyhow::Result;
 use std::path::PathBuf;
 
@@ -19,23 +22,49 @@ impl StatusHandler {
     pub fn status(&self, brief: bool) -> Result<()> {
         log::debug!("Showing status with brief={}", brief);
 
-        let entries = self.indexer.index(&self.items)?;
-        let entries: Vec<&Entry> = entries.iter().filter(|e| !(brief && e.is_ok())).collect();
-
-        for entry in entries {
-            println!(" {}", entry);
-        }
-
-        if !brief {
-            println!(
-                "\n{} ok | {} diff | {} invalid | {} missing home | {} missing repository",
-                Status::Ok,
-                Status::Diff,
-                Status::Invalid("".to_string()),
-                Status::MissingHome,
-                Status::MissingRepo,
-            );
+        let mut indexed = self.indexer.index(&self.items)?;
+        if brief {
+            self.brief(indexed);
+        } else {
+            self.full(&mut indexed);
         }
         Ok(())
+    }
+
+    fn full(&self, indexed: &mut Vec<(String, Vec<Entry>)>) {
+        indexed.sort_by(|(_, a), (_, b)| a.len().partial_cmp(&b.len()).unwrap());
+
+        for (name, entries) in indexed {
+            if entries.is_empty() {
+                continue;
+            }
+
+            if entries.len() == 1 {
+                println!(" {}", entries.first().unwrap());
+            } else {
+                println!("\n {}", name);
+                for entry in entries {
+                    println!("   {}", entry);
+                }
+            }
+        }
+
+        println!(
+            "\n{} ok | {} diff | {} invalid | {} missing home | {} missing repository",
+            Status::Ok,
+            Status::Diff,
+            color::red(""),
+            Status::MissingHome,
+            Status::MissingRepo,
+        );
+    }
+
+    fn brief(&self, _entries: Vec<(String, Vec<Entry>)>) {
+
+        // let entries: Vec<&Entry> = entries
+        //     .iter()
+        //     .flat_map(|(_name, es)| es)
+        //     .filter(|e| !(brief && e.is_ok()))
+        //     .collect();
     }
 }

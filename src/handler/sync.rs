@@ -1,5 +1,5 @@
 use crate::color;
-use crate::data::{Item, Status};
+use crate::data::{Entry, Item, Status};
 use crate::files;
 use crate::path_str;
 use crate::prompt::Prompt;
@@ -73,81 +73,86 @@ impl SyncHandler {
 
     fn copy(&self, target: Target) -> Result<()> {
         let exec = !self.options.dryrun;
-        let entries = self.indexer.index(&self.items)?;
+        let map = self.indexer.index(&self.items)?;
+        let entries: Vec<&Entry> = map.iter().flat_map(|(_name, es)| es).collect();
 
         for entry in entries {
-            match entry.status {
-                Status::Ok => {
-                    log::info!("{} ok", entry.relpath);
-                    continue;
-                }
-                Status::Invalid(reason) => {
-                    if self.options.ignore_invalid {
-                        continue;
+            match entry {
+                Entry::Ok {
+                    relpath,
+                    status,
+                    home_path,
+                    repo_path,
+                } => {
+                    match status {
+                        Status::Ok => {
+                            log::info!("{} ok", relpath);
+                            continue;
+                        }
+                        Status::MissingHome if !target.is_home() => continue,
+                        Status::MissingRepo if target.is_home() => continue,
+                        _ => {}
                     }
-                    bail!("invalid entry: {}", reason);
+
+                    let (display_name, src, dst) = match target {
+                        Target::Home => {
+                            let s = format!("~/{}", relpath);
+                            (s, repo_path, home_path)
+                        }
+                        Target::Repo => {
+                            let s = path_str!(repo_path);
+                            (s.to_string(), home_path, repo_path)
+                        }
+                    };
+
+                    let src_str = path_str!(src);
+                    let dst_str = path_str!(dst);
+
+                    if self.options.confirm {
+                        let prefix = if self.options.show_diff && matches!(status, Status::Diff) {
+                            let mut cmd = self.options.diff_options.to_cmd(&src_str, &dst_str)?;
+                            cmd.status()?;
+                            "\n  "
+                        } else {
+                            ""
+                        };
+
+                        let msg = format!("{}Write {}?", prefix, color::blue(&display_name));
+                        if !self.prompt.confirm(&msg, false)? {
+                            log::info!("Skipping {}", src_str);
+                            continue;
+                        }
+                    }
+
+                    let dir = match dst.parent() {
+                        Some(parent) => parent,
+                        None => bail!("failed to get parent directory of {}", dst_str),
+                    };
+
+                    if !dir.exists() && exec {
+                        log::info!("Creating directory: {:?}", dir);
+                        files::create_dirs(dir)?;
+                    }
+
+                    if exec {
+                        if target.is_home() && dst.exists() && self.options.backup {
+                            let filename = path_str!(dst.file_name().unwrap());
+                            let filename = format!("{filename}.backup");
+
+                            let mut backup = PathBuf::from(&dst);
+                            backup.set_file_name(filename);
+
+                            files::copy(dst, &backup)?;
+                            log::debug!("Created backup of {}", dst_str);
+                        }
+
+                        files::copy(src, dst)?;
+                    }
+
+                    println!("  {} {}", color::green(""), &relpath);
                 }
-                Status::MissingHome if !target.is_home() => continue,
-                Status::MissingRepo if target.is_home() => continue,
-                _ => {}
+                Entry::Err(reason) => bail!("invalid entry: {}", reason),
             }
-
-            let (display_name, src, dst) = match target {
-                Target::Home => {
-                    let s = format!("~/{}", entry.relpath);
-                    (s, entry.repo_path, entry.home_path)
-                }
-                Target::Repo => {
-                    let s = path_str!(entry.repo_path);
-                    (s.to_string(), entry.home_path, entry.repo_path)
-                }
-            };
-
-            let src_str = path_str!(src);
-            let dst_str = path_str!(dst);
-
-            if self.options.confirm {
-                let prefix = if self.options.show_diff && matches!(entry.status, Status::Diff) {
-                    let mut cmd = self.options.diff_options.to_cmd(&src_str, &dst_str)?;
-                    cmd.status()?;
-                    "\n  "
-                } else {
-                    ""
-                };
-
-                let msg = format!("{}Write {}?", prefix, color::blue(&display_name));
-                if !self.prompt.confirm(&msg, false)? {
-                    log::info!("Skipping {}", src_str);
-                    continue;
-                }
-            }
-
-            let dir = match dst.parent() {
-                Some(parent) => parent,
-                None => bail!("failed to get parent directory of {}", dst_str),
-            };
-
-            if !dir.exists() && exec {
-                log::info!("Creating directory: {:?}", dir);
-                files::create_dirs(dir)?;
-            }
-
-            if exec {
-                if target.is_home() && dst.exists() && self.options.backup {
-                    let filename = path_str!(dst.file_name().unwrap());
-                    let filename = format!("{filename}.backup");
-
-                    let mut backup = PathBuf::from(&dst);
-                    backup.set_file_name(filename);
-
-                    files::copy(&dst, &backup)?;
-                    log::debug!("Created backup of {}", dst_str);
-                }
-
-                files::copy(&src, &dst)?;
-            }
-
-            println!("  {} {}", color::green(""), &entry.relpath);
         }
 
         Ok(())

@@ -118,7 +118,6 @@ impl TestContext {
                     let content = random_string(10);
                     create_with_path(&h, &content)?;
                 }
-                Status::Invalid(_) => { /* Ignore */ }
             }
         }
 
@@ -161,27 +160,6 @@ impl Drop for TestContext {
             fs::remove_dir_all(&self.temp_dir).expect("failed to remove temporary test directory");
         }
     }
-}
-
-#[macro_export]
-macro_rules! item {
-    ($path:expr) => {
-        crate::data::Item::Filepath(String::from($path))
-    };
-    ($path:expr, $($x:expr),*) => {
-        {
-            let mut tmp = Vec::new();
-            $(
-                tmp.push(String::from($x));
-            )*
-
-            crate::data::Item::Object {
-                path: String::from($path),
-                name: String::from($path),
-                ignore: Some(tmp),
-            }
-        }
-    };
 }
 
 #[test]

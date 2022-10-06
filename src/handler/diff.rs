@@ -28,7 +28,11 @@ impl DiffHandler {
     }
     pub fn diff(&self) -> Result<()> {
         let entries = self.indexer.index(&self.items)?;
-        let entries: Vec<&Entry> = entries.iter().filter(|e| e.is_diff()).collect();
+        let entries: Vec<&Entry> = entries
+            .iter()
+            .flat_map(|(_name, es)| es)
+            .filter(|e| e.is_diff())
+            .collect();
 
         if entries.is_empty() {
             println!("All up to date.");
@@ -36,11 +40,18 @@ impl DiffHandler {
         }
 
         for entry in entries {
-            let a = path_str!(entry.home_path);
-            let b = path_str!(entry.repo_path);
+            if let Entry::Ok {
+                home_path,
+                repo_path,
+                ..
+            } = entry
+            {
+                let a = path_str!(home_path);
+                let b = path_str!(repo_path);
 
-            let mut cmd = self.options.to_cmd(&a, &b)?;
-            cmd.status()?;
+                let mut cmd = self.options.to_cmd(&a, &b)?;
+                cmd.status()?;
+            }
         }
         Ok(())
     }

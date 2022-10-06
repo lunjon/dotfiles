@@ -1,17 +1,36 @@
 use super::PromptMock;
 use super::TestContext;
+use crate::data::Item;
 use crate::handler::DiffOptions;
 use crate::handler::{SyncHandler, SyncOptions};
-use crate::item;
+
+fn string(name: &str, file: &str) -> Item {
+    Item::from_str(name.to_string(), file.to_string())
+}
+
+fn object(name: &str, files: &[&str], ignore: Option<&[&str]>) -> Item {
+    let ignore = ignore.map(|f| {
+        f.to_vec()
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>()
+    });
+    let files = files
+        .to_vec()
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<Vec<String>>();
+    Item::new(name.to_string(), files, ignore)
+}
 
 fn setup() -> (TestContext, SyncHandler) {
     let items = vec![
-        item!("diffed.txt"),
-        item!("tmux.conf"),
-        item!("init.vim"),
-        item!("env.toml"),
-        item!("config/*"),
-        item!("deepglob/**/*", "*.out"),
+        string("diff", "diffed.txt"),
+        string("tmux", "tmux.conf"),
+        string("vim", "init.vim"),
+        string("env", "env.toml"),
+        string("conf", "config/*"),
+        object("deep", &["deepglob/**/*"], Some(&["*.out"])),
     ];
 
     let context = TestContext::default();
