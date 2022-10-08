@@ -1,3 +1,5 @@
+use super::indexer::Indexer;
+use super::types::{DiffOptions, Only};
 use crate::color;
 use crate::data::{Entry, Item, Status};
 use crate::files;
@@ -6,9 +8,6 @@ use crate::prompt::Prompt;
 use anyhow::{bail, Result};
 use std::fmt;
 use std::path::PathBuf;
-
-use super::indexer::Indexer;
-use super::types::{DiffOptions, Only};
 
 pub struct SyncOptions {
     // If a file is missing from the source (i.e where it is copied from),

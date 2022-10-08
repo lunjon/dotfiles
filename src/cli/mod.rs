@@ -1,8 +1,8 @@
 use crate::data::Dotfile;
-use crate::files;
 use crate::handler::{DiffHandler, DiffOptions, Only, StatusHandler, SyncHandler, SyncOptions};
 use crate::logging;
 use crate::prompt::StdinPrompt;
+use crate::{files, CmdRunner};
 use anyhow::{bail, Result};
 use clap::{command, Arg, ArgMatches, Command};
 use std::env;
@@ -74,7 +74,20 @@ impl Cli {
                             .long("regex")
                             .short('r')
                     )
-                    .arg(Arg::new("ignore-missing").long("ignore-missing").short('i')),
+                    .arg(Arg::new("ignore-missing").long("ignore-missing").short('i').help("Do not give error on missing files."))
+                    .arg(
+                        Arg::new("commit")
+                            .help("Create a git commit after syncing files. Only valid when copying files to repository.")
+                            .long("commit")
+                            .short('C')
+                            .takes_value(true)
+                    )
+                    .arg(
+                        Arg::new("push")
+                            .help("Run git push after commit.")
+                            .long("push")
+                            .takes_value(false)
+                    ),
             )
             .subcommand(
                 Command::new("status")
@@ -141,8 +154,8 @@ impl Cli {
                     .about("Run arbitrary git command in repository.")
                     .long_about(
                         "Runs an arbitrary git command in the configured repository.\
-Usage: dotf git -- <...>
-Example: dotf git -- status",
+Usage: dotf git <...>
+Example: dotf git status",
                     )
                     .arg(
                         Arg::new("args")
@@ -203,15 +216,14 @@ Example: dotf git -- status",
             }
             Some(("git", matches)) => {
                 let dotfile = load_dotfile(&dotfile_path)?;
-                let mut cmd = Cmd::new("git");
-                cmd.current_dir(dotfile.repository());
+                let runner = CmdRunner::new(dotfile.repository());
 
-                if let Some(values) = matches.values_of("args") {
-                    for arg in values {
-                        cmd.arg(arg);
-                    }
-                }
-                cmd.status()?;
+                let args = match matches.values_of("args") {
+                    Some(args) => args.map(|a| a.to_string()).collect::<Vec<String>>(),
+                    None => vec![],
+                };
+
+                runner.run("git", args)?;
             }
             Some(("sync", matches)) => {
                 let dotfile = load_dotfile(&dotfile_path)?;
@@ -225,19 +237,32 @@ Example: dotf git -- status",
                     show_diff: matches.is_present("diff"),
                     diff_options,
                 };
-                let prompt = Box::new(StdinPrompt {});
+
+                let repository = dotfile.repository();
                 let handler = SyncHandler::new(
-                    prompt,
+                    Box::new(StdinPrompt {}),
                     home,
-                    dotfile.repository(),
+                    repository.clone(),
                     dotfile.items(),
                     options,
                     only,
                 );
+
                 if matches.is_present("home") {
                     handler.copy_to_home()?;
                 } else {
                     handler.copy_to_repo()?;
+                    if let Some(msg) = matches.value_of("commit") {
+                        log::info!("Creating git commit with message: {msg}");
+                        let runner = CmdRunner::new(repository);
+                        runner.run("git", to_strings(&["add", "."]))?;
+                        runner.run("git", to_strings(&["commit", "-m", msg]))?;
+
+                        if matches.is_present("push") {
+                            log::info!("Running git push");
+                            runner.run("git", to_strings(&["push"]))?;
+                        }
+                    }
                 }
             }
             _ => unreachable!(),
@@ -330,4 +355,8 @@ fn get_editor(flag: Option<&str>) -> String {
             Err(_) => String::from("vim"),
         },
     }
+}
+
+fn to_strings(v: &[&str]) -> Vec<String> {
+    v.to_vec().iter().map(|s| s.to_string()).collect()
 }

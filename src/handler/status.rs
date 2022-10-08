@@ -1,8 +1,9 @@
 use super::indexer::Indexer;
 use super::types::Only;
+use crate::data::Entry;
 use crate::{
     color,
-    data::{Entry, Item, Status},
+    data::{Item, Status},
 };
 use anyhow::Result;
 use std::path::PathBuf;
