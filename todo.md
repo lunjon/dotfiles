@@ -8,5 +8,5 @@
   ```
 
 ## CI/CD
-- [x] Add GH actions for building, etc.
 - [ ] Add workflow for releases
+

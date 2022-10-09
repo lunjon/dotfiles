@@ -1,5 +1,6 @@
 use super::indexer::Indexer;
 use super::types::{DiffOptions, Only};
+use crate::cmd::CmdRunner;
 use crate::color;
 use crate::data::{Entry, Item, Status};
 use crate::files;
@@ -21,6 +22,10 @@ pub struct SyncOptions {
     pub backup: bool,
     pub show_diff: bool,
     pub diff_options: DiffOptions,
+    // Creates a git commit message.
+    pub git_commit: Option<String>,
+    // Run git push after committing.
+    pub git_push: bool,
 }
 
 impl Default for SyncOptions {
@@ -32,6 +37,8 @@ impl Default for SyncOptions {
             backup: true,
             show_diff: false,
             diff_options: DiffOptions::default(),
+            git_commit: None,
+            git_push: false,
         }
     }
 }
@@ -41,6 +48,7 @@ pub struct SyncHandler {
     prompt: Box<dyn Prompt>,
     items: Vec<Item>,
     options: SyncOptions,
+    runner: CmdRunner,
 }
 
 // Public methods.
@@ -53,12 +61,14 @@ impl SyncHandler {
         options: SyncOptions,
         only: Option<Only>,
     ) -> Self {
+        let runner = CmdRunner::new(repository.clone());
         let indexer = Indexer::new(home, repository, only);
         Self {
             options,
             prompt,
             indexer,
             items,
+            runner,
         }
     }
 
@@ -67,7 +77,19 @@ impl SyncHandler {
     }
 
     pub fn copy_to_repo(&self) -> Result<()> {
-        self.copy(Target::Repo)
+        self.copy(Target::Repo)?;
+        if let Some(msg) = &self.options.git_commit {
+            log::info!("Creating git commit with message: {msg}");
+            self.runner.run("git", to_strings(&["add", "."]))?;
+            self.runner
+                .run("git", to_strings(&["commit", "-m", msg.as_str()]))?;
+
+            if self.options.git_push {
+                log::info!("Running git push");
+                self.runner.run("git", to_strings(&["push"]))?;
+            }
+        }
+        Ok(())
     }
 
     fn copy(&self, target: Target) -> Result<()> {
@@ -179,4 +201,8 @@ impl fmt::Display for Target {
             Target::Repo => write!(f, "repo"),
         }
     }
+}
+
+fn to_strings(v: &[&str]) -> Vec<String> {
+    v.to_vec().iter().map(|s| s.to_string()).collect()
 }

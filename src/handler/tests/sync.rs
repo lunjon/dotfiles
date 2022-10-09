@@ -43,6 +43,8 @@ fn setup() -> (TestContext, SyncHandler) {
         backup: true,
         show_diff: false,
         diff_options: DiffOptions::default(),
+        git_commit: None,
+        git_push: false,
     };
 
     let handler = SyncHandler::new(

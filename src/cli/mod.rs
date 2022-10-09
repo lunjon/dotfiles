@@ -1,8 +1,9 @@
+use crate::cmd::CmdRunner;
 use crate::data::Dotfile;
+use crate::files;
 use crate::handler::{DiffHandler, DiffOptions, Only, StatusHandler, SyncHandler, SyncOptions};
 use crate::logging;
 use crate::prompt::StdinPrompt;
-use crate::{files, CmdRunner};
 use anyhow::{bail, Result};
 use clap::{command, Arg, ArgMatches, Command};
 use std::env;
@@ -236,13 +237,15 @@ Example: dotf git status",
                     ignore_invalid: matches.is_present("ignore-missing"),
                     show_diff: matches.is_present("diff"),
                     diff_options,
+                    git_commit: matches.value_of("commit").map(|s| s.to_string()),
+                    git_push: matches.is_present("push"),
                 };
 
                 let repository = dotfile.repository();
                 let handler = SyncHandler::new(
                     Box::new(StdinPrompt {}),
                     home,
-                    repository.clone(),
+                    repository,
                     dotfile.items(),
                     options,
                     only,
@@ -252,17 +255,6 @@ Example: dotf git status",
                     handler.copy_to_home()?;
                 } else {
                     handler.copy_to_repo()?;
-                    if let Some(msg) = matches.value_of("commit") {
-                        log::info!("Creating git commit with message: {msg}");
-                        let runner = CmdRunner::new(repository);
-                        runner.run("git", to_strings(&["add", "."]))?;
-                        runner.run("git", to_strings(&["commit", "-m", msg]))?;
-
-                        if matches.is_present("push") {
-                            log::info!("Running git push");
-                            runner.run("git", to_strings(&["push"]))?;
-                        }
-                    }
                 }
             }
             _ => unreachable!(),
@@ -355,8 +347,4 @@ fn get_editor(flag: Option<&str>) -> String {
             Err(_) => String::from("vim"),
         },
     }
-}
-
-fn to_strings(v: &[&str]) -> Vec<String> {
-    v.to_vec().iter().map(|s| s.to_string()).collect()
 }
