@@ -157,11 +157,11 @@ impl Indexer {
             if p.is_file() {
                 let relative = p.strip_prefix(&self.home_str)?;
                 let s = path_str!(relative);
-                if ignore(&s, &self.ignore_patterns) {
+                if should_ignore(&s, &self.ignore_patterns) {
                     continue;
                 }
 
-                if !ps.is_empty() && ignore(&s, ps) {
+                if !ps.is_empty() && should_ignore(&s, ps) {
                     continue;
                 }
 
@@ -175,11 +175,11 @@ impl Indexer {
             if p.is_file() {
                 let relative = p.strip_prefix(&self.repo_str)?;
                 let s = path_str!(relative);
-                if ignore(&s, &self.ignore_patterns) {
+                if should_ignore(&s, &self.ignore_patterns) {
                     continue;
                 }
 
-                if !ps.is_empty() && ignore(&s, ps) {
+                if !ps.is_empty() && should_ignore(&s, ps) {
                     continue;
                 }
 
@@ -252,10 +252,6 @@ impl Indexer {
     }
 }
 
-fn ignore(path: &str, patterns: &[GlobPattern]) -> bool {
-    patterns.iter().any(|p| p.matches(path))
-}
-
 fn get_status(home_path: &Path, repo_path: &Path) -> Result<Status> {
     let status = if !home_path.exists() {
         Status::MissingHome
@@ -278,6 +274,33 @@ fn get_status(home_path: &Path, repo_path: &Path) -> Result<Status> {
     Ok(status)
 }
 
+fn should_ignore(path: &str, patterns: &[GlobPattern]) -> bool {
+    patterns.iter().any(|p| p.matches(path))
+}
+
 pub fn is_glob(s: &str) -> bool {
     s.contains('*')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_ignore_true() {
+        let patterns = &[
+            GlobPattern::new("*.txt").unwrap(),
+            GlobPattern::new(".git/**/*").unwrap(),
+        ];
+        let paths = &[
+            "root.txt",
+            "path/test.txt",
+            ".git/test",
+            ".git/hooks/commit",
+        ];
+
+        for path in paths {
+            assert!(should_ignore(path, patterns));
+        }
+    }
 }
