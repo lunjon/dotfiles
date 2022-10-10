@@ -1,9 +1,12 @@
-use super::Only;
 use crate::data::{Entry, Item, Status};
+use crate::handler::Only;
 use crate::{files, path_str};
 use anyhow::Result;
 use glob::Pattern as GlobPattern;
 use std::path::{Path, PathBuf};
+
+#[cfg(test)]
+mod tests;
 
 pub struct Indexer {
     // The path to the users home directory.
@@ -27,11 +30,14 @@ impl Indexer {
             repo,
             repo_str,
             ignore_patterns: vec![
-                GlobPattern::new("**/.git/**/*").unwrap(),
-                GlobPattern::new("**/node_modules/**/*").unwrap(),
-                GlobPattern::new("**/target/**/*").unwrap(),
+                GlobPattern::new("*/.git/*").unwrap(),
+                GlobPattern::new("*/node_modules/*").unwrap(),
+                GlobPattern::new("*/target/*").unwrap(),
                 GlobPattern::new("*.o").unwrap(),
                 GlobPattern::new("*.backup").unwrap(),
+                // Python
+                GlobPattern::new("/*__pycache__/*").unwrap(),
+                GlobPattern::new("*/.venv/*").unwrap(),
             ],
             only,
         }
@@ -54,8 +60,6 @@ impl Indexer {
                                 break;
                             }
                         }
-                    } else {
-                        filtered.push(entry);
                     }
                 }
             } else {
@@ -64,20 +68,6 @@ impl Indexer {
 
             entries.push((item.name.clone(), filtered));
         }
-
-        // let mut filtered = Vec::new();
-        // if let Some(only) = &self.only {
-        //     for entry in entries {
-        //         for pattern in &only.patterns {
-        //             if pattern.matches(&entry.relpath) {
-        //                 filtered.push(entry);
-        //                 break;
-        //             }
-        //         }
-        //     }
-        // } else {
-        //     filtered = entries;
-        // }
 
         entries.sort_by(|(a, _), (b, _)| a.partial_cmp(b).unwrap());
         Ok(entries)
@@ -144,11 +134,12 @@ impl Indexer {
 
         let home_str = path_str!(home_glob_path);
         let repo_str = path_str!(repo_glob_path);
+
         let home_glob = glob::glob(&home_str);
         let repo_glob = glob::glob(&repo_str);
 
         if home_glob.is_err() || repo_glob.is_err() {
-            let entry = Entry::new_err("invalid glob pattern".to_string());
+            let entry = Entry::new_err(format!("invalid glob pattern: {}", globpattern));
             return Ok(vec![entry]);
         }
 
@@ -187,6 +178,7 @@ impl Indexer {
                 repo_files.push(s.to_string());
             }
         }
+        // dbg!(home_files.len(), repo_files.len());
 
         let both: Vec<&String> = home_files
             .iter()
@@ -280,27 +272,4 @@ fn should_ignore(path: &str, patterns: &[GlobPattern]) -> bool {
 
 pub fn is_glob(s: &str) -> bool {
     s.contains('*')
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn should_ignore_true() {
-        let patterns = &[
-            GlobPattern::new("*.txt").unwrap(),
-            GlobPattern::new(".git/**/*").unwrap(),
-        ];
-        let paths = &[
-            "root.txt",
-            "path/test.txt",
-            ".git/test",
-            ".git/hooks/commit",
-        ];
-
-        for path in paths {
-            assert!(should_ignore(path, patterns));
-        }
-    }
 }

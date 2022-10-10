@@ -1,6 +1,6 @@
-use super::indexer::Indexer;
 use super::types::{DiffOptions, Only};
 use crate::data::{Entry, Item};
+use crate::index::Indexer;
 use crate::path_str;
 use anyhow::Result;
 use std::path::PathBuf;

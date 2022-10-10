@@ -27,12 +27,6 @@ impl Entry {
         Self::Err(reason)
     }
 
-    #[cfg(test)]
-    #[allow(dead_code)]
-    fn is_invalid(&self) -> bool {
-        !self.is_ok()
-    }
-
     pub fn is_ok(&self) -> bool {
         match self {
             Entry::Ok { .. } => true,
@@ -76,5 +70,16 @@ impl fmt::Display for Status {
         };
 
         write!(f, "{}", icon)
+    }
+}
+
+#[cfg(test)]
+impl Entry {
+    pub fn get_relpath(&self) -> &str {
+        if let Self::Ok { relpath, .. } = &self {
+            relpath
+        } else {
+            panic!()
+        }
     }
 }

@@ -1,36 +1,16 @@
-use super::PromptMock;
-use super::TestContext;
 use crate::data::Item;
 use crate::handler::DiffOptions;
 use crate::handler::{SyncHandler, SyncOptions};
-
-fn string(name: &str, file: &str) -> Item {
-    Item::from_str(name.to_string(), file.to_string())
-}
-
-fn object(name: &str, files: &[&str], ignore: Option<&[&str]>) -> Item {
-    let ignore = ignore.map(|f| {
-        f.to_vec()
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>()
-    });
-    let files = files
-        .to_vec()
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-    Item::new(name.to_string(), files, ignore)
-}
+use crate::testing::{PromptMock, TestContext};
 
 fn setup() -> (TestContext, SyncHandler) {
     let items = vec![
-        string("diff", "diffed.txt"),
-        string("tmux", "tmux.conf"),
-        string("vim", "init.vim"),
-        string("env", "env.toml"),
-        string("conf", "config/*"),
-        object("deep", &["deepglob/**/*"], Some(&["*.out"])),
+        Item::simple_new("diff", "diffed.txt"),
+        Item::simple_new("tmux", "tmux.conf"),
+        Item::simple_new("vim", "init.vim"),
+        Item::simple_new("env", "env.toml"),
+        Item::simple_new("conf", "config/*"),
+        Item::object_new("deep", &["deepglob/**/*"], Some(&["*.out"])),
     ];
 
     let context = TestContext::default();

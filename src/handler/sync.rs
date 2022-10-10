@@ -1,9 +1,9 @@
-use super::indexer::Indexer;
 use super::types::{DiffOptions, Only};
 use crate::cmd::CmdRunner;
 use crate::color;
 use crate::data::{Entry, Item, Status};
 use crate::files;
+use crate::index::Indexer;
 use crate::path_str;
 use crate::prompt::Prompt;
 use anyhow::{bail, Result};

@@ -4,8 +4,12 @@ pub mod color;
 pub mod data;
 pub mod files;
 pub mod handler;
+pub mod index;
 pub mod logging;
 pub mod prompt;
+
+#[cfg(test)]
+mod testing;
 
 /// Converts a Path/PathBuf into String type.
 /// Uses unwrap(), which may panic for a path with

@@ -1,6 +1,6 @@
-use super::indexer::Indexer;
 use super::types::Only;
 use crate::data::Entry;
+use crate::index::Indexer;
 use crate::{
     color,
     data::{Item, Status},

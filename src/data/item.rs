@@ -18,19 +18,11 @@ impl Item {
     }
 
     pub fn from_str(name: String, file: String) -> Self {
-        Self {
-            name,
-            files: vec![file],
-            ignore: None,
-        }
+        Self::new(name, vec![file], None)
     }
 
     pub fn from_list(name: String, files: Vec<String>) -> Self {
-        Self {
-            name,
-            files,
-            ignore: None,
-        }
+        Self::new(name, files, None)
     }
 
     pub fn is_valid(&self) -> bool {
@@ -39,13 +31,6 @@ impl Item {
             s => !(s.starts_with("**") || s.starts_with('/')),
         })
     }
-
-    // pub fn get_path(&self) -> &str {
-    //     match self {
-    //         Item::Single(s) => s.trim(),
-    //         Item::Object { path, .. } => path.trim(),
-    //     }
-    // }
 
     pub fn ignore_patterns(&self) -> Result<Option<Vec<Pattern>>> {
         let patterns = match &self.ignore {
@@ -62,41 +47,24 @@ impl Item {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::Item;
+#[cfg(test)]
+impl Item {
+    pub fn simple_new(name: &str, file: &str) -> Item {
+        Item::from_str(name.to_string(), file.to_string())
+    }
 
-//     #[test]
-//     fn test_valid_path() {
-//         let tests = vec![
-//             (false, Single("".to_string())),
-//             (false, Single("/root".to_string())),
-//             (false, Single("*".to_string())),
-//             (false, Single("**".to_string())),
-//             (false, Single("**/*".to_string())),
-//             (true, Single(".tmux.conf".to_string())),
-//             (true, Single(".config/test.yml".to_string())),
-//         ];
-
-//         for (valid, item) in tests {
-//             assert_eq!(valid, item.is_valid());
-//         }
-//     }
-
-//     #[test]
-//     fn test_is_glob() {
-//         let tests = vec![
-//             (true, Single("*".to_string())),
-//             (true, Single("**".to_string())),
-//             (true, Single("**/*".to_string())),
-//             (true, Single(".config/*".to_string())),
-//             (false, Single(".tmux.conf".to_string())),
-//             (false, Single(".config/test.yml".to_string())),
-//             (false, Single(".config/".to_string())),
-//         ];
-
-//         for (valid, item) in tests {
-//             assert_eq!(valid, item.is_glob());
-//         }
-//     }
-// }
+    pub fn object_new(name: &str, files: &[&str], ignore: Option<&[&str]>) -> Item {
+        let files = files
+            .to_vec()
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        let ignore = ignore.map(|f| {
+            f.to_vec()
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>()
+        });
+        Item::new(name.to_string(), files, ignore)
+    }
+}
