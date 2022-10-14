@@ -15,7 +15,6 @@
     file = "{xdg_config_home}/file.rs"
     ```
     - Could in that case use: https://github.com/dirs-dev/directories-rs
-- [ ] Use crate `inquire` for prompts
 - [ ] Ability to turn off backups via object notation
   ```toml
   myfile = { files = [".cool"], backup = false }

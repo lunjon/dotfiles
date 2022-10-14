@@ -179,4 +179,8 @@ impl Prompt for PromptMock {
     fn prompt(&self, _msg: &str) -> Result<String> {
         Ok("yes".to_string())
     }
+
+    fn confirm(&self, _msg: &str, _default_yes: bool) -> Result<bool> {
+        Ok(true)
+    }
 }

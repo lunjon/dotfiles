@@ -17,7 +17,7 @@ fn setup() -> (TestContext, SyncHandler) {
     context.setup().unwrap();
 
     let options = SyncOptions {
-        ignore_invalid: true,
+        interactive: false,
         dryrun: false,
         confirm: false,
         backup: true,
@@ -63,7 +63,6 @@ fn copy_to_repo() {
         (false, "deepglob/test.out"),
         (false, "deepglob/.git/config"),
     ];
-
     for (exists, path) in paths {
         let p = context.repo_path(path);
         assert_eq!(exists, p.exists());

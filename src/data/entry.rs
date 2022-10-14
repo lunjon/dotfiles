@@ -40,6 +40,14 @@ impl Entry {
             Entry::Err(_) => false,
         }
     }
+
+    pub fn get_relpath(&self) -> &str {
+        if let Self::Ok { relpath, .. } = &self {
+            relpath
+        } else {
+            panic!()
+        }
+    }
 }
 
 impl fmt::Display for Entry {
@@ -70,16 +78,5 @@ impl fmt::Display for Status {
         };
 
         write!(f, "{}", icon)
-    }
-}
-
-#[cfg(test)]
-impl Entry {
-    pub fn get_relpath(&self) -> &str {
-        if let Self::Ok { relpath, .. } = &self {
-            relpath
-        } else {
-            panic!()
-        }
     }
 }

@@ -61,6 +61,13 @@ impl Cli {
                             .help("Do not create backups when copying to home."),
                     )
                     .arg(
+                        Arg::new("interactive").help("Sync files interactively.")
+                        .long("interactive")
+                        .short('i')
+                        .takes_value(false)
+                        .conflicts_with_all(&["home","no-confirm"])
+                    )
+                    .arg(
                         Arg::new("only")
                             .help("Only include files matching patterns specified. Pattern uses glob by default. Set --regex to use regular expressions.")
                             .long("only")
@@ -75,7 +82,6 @@ impl Cli {
                             .long("regex")
                             .short('r')
                     )
-                    .arg(Arg::new("ignore-missing").long("ignore-missing").short('i').help("Do not give error on missing files."))
                     .arg(
                         Arg::new("commit")
                             .help("Create a git commit after syncing files. Only valid when copying files to repository.")
@@ -230,11 +236,12 @@ Example: dotf git status",
                 let dotfile = load_dotfile(&dotfile_path)?;
                 let only = get_only(matches)?;
                 let diff_options = get_diff_options(matches)?;
+
                 let options = SyncOptions {
+                    interactive: matches.is_present("interactive"),
                     confirm: !matches.is_present("no-confirm"),
                     backup: !matches.is_present("no-backup"),
                     dryrun: matches.is_present("dryrun"),
-                    ignore_invalid: matches.is_present("ignore-missing"),
                     show_diff: matches.is_present("diff"),
                     diff_options,
                     git_commit: matches.value_of("commit").map(|s| s.to_string()),

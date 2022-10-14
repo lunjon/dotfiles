@@ -7,13 +7,11 @@ use crate::index::Indexer;
 use crate::path_str;
 use crate::prompt::Prompt;
 use anyhow::{bail, Result};
+use inquire::MultiSelect;
 use std::fmt;
 use std::path::PathBuf;
 
 pub struct SyncOptions {
-    // If a file is missing from the source (i.e where it is copied from),
-    // ignore any error it is causing.
-    pub ignore_invalid: bool,
     // Do not execute any file operations.
     pub dryrun: bool,
     // Ask user, by using the prompt field, to confirm each copy.
@@ -26,12 +24,13 @@ pub struct SyncOptions {
     pub git_commit: Option<String>,
     // Run git push after committing.
     pub git_push: bool,
+    pub interactive: bool,
 }
 
 impl Default for SyncOptions {
     fn default() -> Self {
         Self {
-            ignore_invalid: false,
+            interactive: false,
             dryrun: false,
             confirm: true,
             backup: true,
@@ -93,9 +92,42 @@ impl SyncHandler {
     }
 
     fn copy(&self, target: Target) -> Result<()> {
-        let exec = !self.options.dryrun;
         let map = self.indexer.index(&self.items)?;
-        let entries: Vec<&Entry> = map.iter().flat_map(|(_name, es)| es).collect();
+        let entries: Vec<&Entry> = map
+            .iter()
+            .flat_map(|(_name, es)| es)
+            .filter(|entry| entry.is_ok())
+            .collect();
+
+        let entries = if self.options.interactive {
+            let files: Vec<String> = entries
+                .iter()
+                .filter_map(|e| match e {
+                    Entry::Ok {
+                        relpath, status, ..
+                    } => match status {
+                        Status::Ok => None,
+                        Status::Diff => Some(relpath.to_string()),
+                        Status::MissingHome if target.is_home() => Some(relpath.to_string()),
+                        Status::MissingRepo if !target.is_home() => Some(relpath.to_string()),
+                        _ => None,
+                    },
+                    Entry::Err(_) => None,
+                })
+                .collect();
+            let selected = MultiSelect::new("Select entries to sync", files).prompt()?;
+
+            let mut matched = Vec::new();
+            for entry in entries {
+                let relpath = entry.get_relpath().to_string();
+                if selected.contains(&relpath) {
+                    matched.push(entry.clone());
+                }
+            }
+            matched
+        } else {
+            entries
+        };
 
         for entry in entries {
             match entry {
@@ -104,78 +136,87 @@ impl SyncHandler {
                     status,
                     home_path,
                     repo_path,
-                } => {
-                    match status {
-                        Status::Ok => {
-                            log::info!("{} ok", relpath);
-                            continue;
-                        }
-                        Status::MissingHome if !target.is_home() => continue,
-                        Status::MissingRepo if target.is_home() => continue,
-                        _ => {}
-                    }
-
-                    let (display_name, src, dst) = match target {
-                        Target::Home => {
-                            let s = format!("~/{}", relpath);
-                            (s, repo_path, home_path)
-                        }
-                        Target::Repo => {
-                            let s = path_str!(repo_path);
-                            (s.to_string(), home_path, repo_path)
-                        }
-                    };
-
-                    let src_str = path_str!(src);
-                    let dst_str = path_str!(dst);
-
-                    if self.options.confirm {
-                        let prefix = if self.options.show_diff && matches!(status, Status::Diff) {
-                            let mut cmd = self.options.diff_options.to_cmd(&src_str, &dst_str)?;
-                            cmd.status()?;
-                            "\n  "
-                        } else {
-                            ""
-                        };
-
-                        let msg = format!("{}Write {}?", prefix, color::blue(&display_name));
-                        if !self.prompt.confirm(&msg, false)? {
-                            log::info!("Skipping {}", src_str);
-                            continue;
-                        }
-                    }
-
-                    let dir = match dst.parent() {
-                        Some(parent) => parent,
-                        None => bail!("failed to get parent directory of {}", dst_str),
-                    };
-
-                    if !dir.exists() && exec {
-                        log::info!("Creating directory: {:?}", dir);
-                        files::create_dirs(dir)?;
-                    }
-
-                    if exec {
-                        if target.is_home() && dst.exists() && self.options.backup {
-                            let filename = path_str!(dst.file_name().unwrap());
-                            let filename = format!("{filename}.backup");
-
-                            let mut backup = PathBuf::from(&dst);
-                            backup.set_file_name(filename);
-
-                            files::copy(dst, &backup)?;
-                            log::debug!("Created backup of {}", dst_str);
-                        }
-
-                        files::copy(src, dst)?;
-                    }
-
-                    println!("  {} {}", color::green(""), &relpath);
-                }
+                } => self.make_copy(&target, relpath, status, home_path, repo_path)?,
                 Entry::Err(reason) => bail!("invalid entry: {}", reason),
             }
         }
 
+        Ok(())
+    }
+
+    fn make_copy(
+        &self,
+        target: &Target,
+        relpath: &str,
+        status: &Status,
+        home_path: &PathBuf,
+        repo_path: &PathBuf,
+    ) -> Result<()> {
+        match status {
+            Status::Ok => {
+                log::info!("{} ok", relpath);
+                return Ok(());
+            }
+            Status::MissingHome if !target.is_home() => return Ok(()),
+            Status::MissingRepo if target.is_home() => return Ok(()),
+            _ => {}
+        }
+
+        let exec = !self.options.dryrun;
+
+        let (display_name, src, dst) = match target {
+            Target::Home => {
+                let s = format!("~/{}", relpath);
+                (s, repo_path, home_path)
+            }
+            Target::Repo => {
+                let s = path_str!(repo_path);
+                (s.to_string(), home_path, repo_path)
+            }
+        };
+
+        let src_str = path_str!(src);
+        let dst_str = path_str!(dst);
+
+        if self.options.confirm {
+            if self.options.show_diff && matches!(status, Status::Diff) {
+                let mut cmd = self.options.diff_options.to_cmd(&src_str, &dst_str)?;
+                cmd.status()?;
+            }
+
+            let msg = format!("Write {}?", color::blue(&display_name));
+            if !self.prompt.confirm(&msg, false)? {
+                log::info!("Skipping {}", src_str);
+                return Ok(());
+            }
+        }
+
+        let dir = match dst.parent() {
+            Some(parent) => parent,
+            None => bail!("failed to get parent directory of {}", dst_str),
+        };
+
+        if exec {
+            if !dir.exists() {
+                log::info!("Creating directory: {:?}", dir);
+                files::create_dirs(dir)?;
+            }
+
+            if target.is_home() && dst.exists() && self.options.backup {
+                let filename = path_str!(dst.file_name().unwrap());
+                let filename = format!("{filename}.backup");
+
+                let mut backup = PathBuf::from(&dst);
+                backup.set_file_name(filename);
+
+                files::copy(dst, &backup)?;
+                log::debug!("Created backup of {}", dst_str);
+            }
+
+            files::copy(src, dst)?;
+        }
+
+        println!("  {} {}", color::green(""), &relpath);
         Ok(())
     }
 }
