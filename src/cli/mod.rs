@@ -177,7 +177,7 @@ Example: dotf git status",
             logging::init(level)?
         }
 
-        let home = get_home()?;
+        let home = PathBuf::from(crate::HOME_DIR.as_str());
         log::debug!("Home directory: {:?}", home);
 
         let dotfile_path = match get_dotfile_path(&home) {
@@ -314,13 +314,6 @@ fn get_dotfile_path(home: &Path) -> Option<PathBuf> {
         Some(path)
     } else {
         None
-    }
-}
-
-fn get_home() -> Result<PathBuf> {
-    match home::home_dir() {
-        Some(home) => Ok(home),
-        None => bail!("unable to resolve home directory"),
     }
 }
 

@@ -43,7 +43,7 @@ impl Indexer {
         }
     }
 
-    pub fn index(&self, items: &Vec<Item>) -> Result<Vec<(String, Vec<Entry>)>> {
+    pub fn index(&self, items: &[Item]) -> Result<Vec<(String, Vec<Entry>)>> {
         let mut entries: Vec<(String, Vec<Entry>)> = Vec::new();
 
         for item in items {
@@ -74,30 +74,25 @@ impl Indexer {
     }
 
     fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
-        if !item.is_valid() {
-            let entry = Entry::new_err("invalid item".to_string());
-            return Ok(vec![entry]);
-        }
-
         let ps = match item.ignore_patterns()? {
             None => vec![], // unnecessary allocation?
             Some(ps) => ps,
         };
 
         let mut entries = Vec::new();
-        for filepath in &item.files {
-            let path = PathBuf::from(filepath);
+        for path in &item.files {
+            let filepath = path_str!(path);
             let home_path = self.home.join(&filepath);
             let repo_path = self.repo.join(&filepath);
 
-            if is_glob(filepath) {
-                return self.process_glob(filepath, &ps);
+            if is_glob(&filepath) {
+                return self.process_glob(&filepath, &ps);
             }
 
-            if !path.is_relative() {
-                let entry = Entry::new_err(format!("path is not relative: {filepath}"));
-                return Ok(vec![entry]);
-            }
+            // if !path.is_relative() {
+            //     let entry = Entry::new_err(format!("path is not relative: {filepath}"));
+            //     return Ok(vec![entry]);
+            // }
 
             if !(home_path.exists() || repo_path.exists()) {
                 let entry =
@@ -118,7 +113,7 @@ impl Indexer {
                 return Ok(vec![entry]);
             }
 
-            if let Some(entry) = self.make_entry(filepath, home_path, repo_path)? {
+            if let Some(entry) = self.make_entry(&filepath, home_path, repo_path)? {
                 entries.push(entry);
             }
         }
@@ -201,7 +196,7 @@ impl Indexer {
 
             match status {
                 Some(status) => {
-                    let entry = Entry::new(path, status, h, r);
+                    let entry = Entry::new(path, status, h, r)?;
                     entries.push(entry);
                 }
                 None => {
@@ -239,7 +234,7 @@ impl Indexer {
         }
 
         let status = get_status(&home_path, &repo_path)?;
-        let entry = Entry::new(filepath, status, home_path, repo_path);
+        let entry = Entry::new(filepath, status, home_path, repo_path)?;
         Ok(Some(entry))
     }
 }

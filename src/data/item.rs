@@ -1,19 +1,45 @@
-use anyhow::Result;
+use std::path::PathBuf;
+
+use anyhow::{bail, Result};
 use glob::Pattern;
+use serde::Deserialize;
+use toml::{self, Value as Toml};
 
 #[derive(Clone, Debug)]
 pub struct Item {
     pub name: String,
-    pub files: Vec<String>,
+    pub files: Vec<PathBuf>,
     pub ignore: Option<Vec<String>>,
+}
+
+#[macro_export]
+macro_rules! item {
+    ($name:expr, $files:expr) => {{
+        let files = {
+            let v: Vec<String> = $files.to_vec().iter().map(|s| s.to_string()).collect();
+            v
+        };
+        crate::data::item::Item::new($name.to_string(), files, None)
+    }};
+    ($name:expr, $files:expr, $ignore:expr) => {{
+        let files = {
+            let v: Vec<String> = $files.to_vec().iter().map(|s| s.to_string()).collect();
+            v
+        };
+        let ignore = {
+            let v: Vec<String> = $ignore.to_vec().iter().map(|s| s.to_string()).collect();
+            v
+        };
+        crate::data::item::Item::new($name.to_string(), files, Some(ignore))
+    }};
 }
 
 impl Item {
     pub fn new(name: String, files: Vec<String>, ignore: Option<Vec<String>>) -> Self {
         Self {
             name,
-            files,
             ignore,
+            files: files.iter().map(PathBuf::from).collect(),
         }
     }
 
@@ -25,11 +51,42 @@ impl Item {
         Self::new(name, files, None)
     }
 
-    pub fn is_valid(&self) -> bool {
-        self.files.iter().any(|path| match path.as_str() {
-            "" | "*" | "**" | "**/*" => false,
-            s => !(s.starts_with("**") || s.starts_with('/')),
-        })
+    pub fn from_toml(name: String, value: Toml) -> Result<Self> {
+        let item = match value {
+            Toml::String(s) => {
+                if s.trim().is_empty() {
+                    bail!("{}: string must not be empty", name);
+                }
+                Self::from_str(name, s)
+            }
+            Toml::Array(arr) => {
+                if arr.is_empty() {
+                    bail!("{}: list must not be empty", name);
+                }
+
+                let mut files = Vec::new();
+                for value in arr {
+                    match value {
+                        Toml::String(s) => files.push(s),
+                        _ => bail!("invalid type for {}", name),
+                    }
+                }
+                Self::from_list(name, files)
+            }
+            Toml::Table(t) => {
+                let s = toml::to_string(&t)?;
+                let obj: Obj = toml::from_str(&s)?;
+                Self::new(name, obj.files, obj.ignore)
+            }
+            _ => bail!("invalid type for {}", name),
+        };
+        Ok(item)
+    }
+
+    pub fn with_suffix(mut self, suffix: &str) -> Self {
+        let root = PathBuf::from(suffix);
+        self.files = self.files.iter().map(|p| root.join(p)).collect();
+        self
     }
 
     pub fn ignore_patterns(&self) -> Result<Option<Vec<Pattern>>> {
@@ -45,6 +102,12 @@ impl Item {
         };
         Ok(patterns)
     }
+}
+
+#[derive(Deserialize)]
+struct Obj {
+    ignore: Option<Vec<String>>,
+    files: Vec<String>,
 }
 
 #[cfg(test)]

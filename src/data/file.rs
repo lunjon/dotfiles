@@ -16,7 +16,7 @@ pub struct Dotfile {
 
 impl Dotfile {
     pub fn from(s: &str) -> Result<Dotfile> {
-        let df: NewDotfile = toml::from_str(s)?;
+        let df: RawDotfile = toml::from_str(s)?;
 
         // Validate that repository path exists
         let path = PathBuf::from(&df.repository);
@@ -25,38 +25,17 @@ impl Dotfile {
         }
 
         let mut items = Vec::new();
-        for (name, value) in df.files {
-            let item = match value {
-                Toml::String(s) => {
-                    if s.trim().is_empty() {
-                        bail!("{}: string must not be empty", name);
-                    }
-
-                    Item::from_str(name, s)
-                }
-                Toml::Array(arr) => {
-                    if arr.is_empty() {
-                        bail!("{}: list must not be empty", name);
-                    }
-
-                    let mut files = Vec::new();
-                    for value in arr {
-                        match value {
-                            Toml::String(s) => files.push(s),
-                            _ => bail!("invalid type for {}", name),
-                        }
-                    }
-                    Item::from_list(name, files)
-                }
-                Toml::Table(t) => {
-                    let s = toml::to_string(&t)?;
-                    let obj: Obj = toml::from_str(&s)?;
-                    Item::new(name, obj.files, obj.ignore)
-                }
-                _ => bail!("invalid type for {}", name),
-            };
-
-            items.push(item);
+        if let Some(map) = df.files {
+            for (name, value) in map {
+                let item = Item::from_toml(name, value)?;
+                items.push(item);
+            }
+        }
+        if let Some(map) = df.config {
+            for (name, value) in map {
+                let item = Item::from_toml(name, value)?.with_suffix(&crate::LOCAL_CONFIG_DIR);
+                items.push(item);
+            }
         }
 
         Ok(Dotfile {
@@ -74,17 +53,15 @@ impl Dotfile {
     }
 }
 
-#[derive(Deserialize)]
-struct Obj {
-    ignore: Option<Vec<String>>,
-    files: Vec<String>,
-}
+type ItemMap = HashMap<String, Toml>;
 
+// The type which is read from file.
 #[derive(Deserialize)]
-struct NewDotfile {
+struct RawDotfile {
     // Path to the repository.
     repository: String,
-    files: HashMap<String, Toml>,
+    files: Option<ItemMap>,
+    config: Option<ItemMap>,
 }
 
 #[cfg(test)]
@@ -107,6 +84,23 @@ mod tests {
         let dotfile = Dotfile::from(dotfile_content).expect("valid dotfile");
         assert_eq!(dotfile.items.len(), 5);
     }
+
+    // #[test]
+    // fn should_respect_builtin_section() {
+    //     let dotfile_content = r#"
+    //     repository = "./"
+
+    //     [files]
+    //     cargo = "Cargo.toml"
+
+    //     [builtin]
+    //     git = true
+    //     nvim = { ignore= ["*.txt"] }
+    //     "#;
+
+    //     let dotfile = Dotfile::from(dotfile_content).expect("valid dotfile");
+    //     assert_eq!(dotfile.items.len(), 3);
+    // }
 
     #[test]
     fn test_from_invalid() {
