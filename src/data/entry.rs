@@ -1,7 +1,11 @@
 use crate::color;
+use crate::path_str;
+use crate::HOME_DIR;
+use anyhow::Result;
 use std::fmt;
 use std::path::PathBuf;
 
+#[derive(Clone)]
 pub enum Entry {
     Ok {
         // The relative filepath for the dotfile, e.g .gitconfig
@@ -14,13 +18,24 @@ pub enum Entry {
 }
 
 impl Entry {
-    pub fn new(relpath: &str, status: Status, home_path: PathBuf, repo_path: PathBuf) -> Self {
-        Self::Ok {
-            relpath: relpath.to_string(),
+    pub fn new(
+        relpath: &str,
+        status: Status,
+        home_path: PathBuf,
+        repo_path: PathBuf,
+    ) -> Result<Self> {
+        let path = PathBuf::from(relpath);
+        let relpath = match path.strip_prefix(HOME_DIR.as_str()) {
+            Ok(p) => path_str!(p),
+            Err(_) => relpath.to_string(),
+        };
+
+        Ok(Self::Ok {
+            relpath,
             status,
             home_path,
             repo_path,
-        }
+        })
     }
 
     pub fn new_err(reason: String) -> Self {
@@ -61,6 +76,7 @@ impl fmt::Display for Entry {
     }
 }
 
+#[derive(Clone)]
 pub enum Status {
     Ok,
     Diff,

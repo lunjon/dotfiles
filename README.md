@@ -22,23 +22,34 @@ $ cargo install --path .
 ## Usage
 
 `dotf` uses `~/.config/dotfiles.toml`, called the _dotfile_, to manage dotfiles.
-The dotfile must contain:
+
+The dotfile must contain at least one section of files to track:
+- `files`: arbitrary filepaths relative to home directory to track, such as `notes/*.md` to track all markdown files in `~/notes/` directory.
+- `config`: known folder configuration directories:
+  - Linux: `$XDG_CONFIG_HOME` or `$HOME/.config`
+  - MacOS: `$HOME/Library/Application Support`
+  - Windows: [`FOLDERID_LocalAppData`](https://learn.microsoft.com/sv-se/windows/win32/shell/knownfolderid?redirectedfrom=MSDN)
+
+It is better demonstrated with an example.
 
 ```toml
 # The path to the repository you wish to sync the files.
 repository = "string"
 
-[files]
-# Files relative to your home directory that you wish to track.
-# Examples:
-vim = ".vimrc" # Simplest type, just a filepath
-glob = "notes/**/*.txt" # Glob pattern
-list = [ ".zshrc", ".bashrc" ] # List of filepaths
+# All following sections required the following types:
+#  name = string | string[] | table
 
+[files] # Assumes files are relative to your home directory.
+vim = ".vimrc"                 # Simplest type, just a filepath
+glob = "notes/**/*.txt"        # Glob pattern
+list = [ ".zshrc", ".bashrc" ] # List of filepaths
 # Table form (* required field):
 #   files* ([string]): file paths to use
 #   ignore ([string]): optional list of glob patterns to ignore
 table = { files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }
+
+[config] # Files in standard configuration directory.
+nvim = "nvim/**/*" # On linux this will typically be ~/.config/nvim/**/*
 ```
 
 Example of sub-commands:

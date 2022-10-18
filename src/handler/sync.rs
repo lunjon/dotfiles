@@ -9,7 +9,7 @@ use crate::prompt::Prompt;
 use anyhow::{bail, Result};
 use inquire::MultiSelect;
 use std::fmt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct SyncOptions {
     // Do not execute any file operations.
@@ -121,7 +121,7 @@ impl SyncHandler {
             for entry in entries {
                 let relpath = entry.get_relpath().to_string();
                 if selected.contains(&relpath) {
-                    matched.push(entry.clone());
+                    matched.push(entry);
                 }
             }
             matched
@@ -149,8 +149,8 @@ impl SyncHandler {
         target: &Target,
         relpath: &str,
         status: &Status,
-        home_path: &PathBuf,
-        repo_path: &PathBuf,
+        home_path: &Path,
+        repo_path: &Path,
     ) -> Result<()> {
         match status {
             Status::Ok => {
@@ -171,7 +171,7 @@ impl SyncHandler {
             }
             Target::Repo => {
                 let s = path_str!(repo_path);
-                (s.to_string(), home_path, repo_path)
+                (s, home_path, repo_path)
             }
         };
 
