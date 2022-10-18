@@ -85,23 +85,6 @@ mod tests {
         assert_eq!(dotfile.items.len(), 5);
     }
 
-    // #[test]
-    // fn should_respect_builtin_section() {
-    //     let dotfile_content = r#"
-    //     repository = "./"
-
-    //     [files]
-    //     cargo = "Cargo.toml"
-
-    //     [builtin]
-    //     git = true
-    //     nvim = { ignore= ["*.txt"] }
-    //     "#;
-
-    //     let dotfile = Dotfile::from(dotfile_content).expect("valid dotfile");
-    //     assert_eq!(dotfile.items.len(), 3);
-    // }
-
     #[test]
     fn test_from_invalid() {
         let tests = [

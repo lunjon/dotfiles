@@ -89,11 +89,6 @@ impl Indexer {
                 return self.process_glob(&filepath, &ps);
             }
 
-            // if !path.is_relative() {
-            //     let entry = Entry::new_err(format!("path is not relative: {filepath}"));
-            //     return Ok(vec![entry]);
-            // }
-
             if !(home_path.exists() || repo_path.exists()) {
                 let entry =
                     Entry::new_err("does not exists in either home or repository".to_string());
