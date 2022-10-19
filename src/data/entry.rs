@@ -1,6 +1,6 @@
-use crate::color;
 use crate::path::try_strip_home_prefix;
 use anyhow::Result;
+use crossterm::style::Stylize;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -43,6 +43,13 @@ impl Entry {
         }
     }
 
+    pub fn is_status_ok(&self) -> bool {
+        match self {
+            Entry::Ok { status, .. } => matches!(status, Status::Ok),
+            Entry::Err(_) => false,
+        }
+    }
+
     pub fn is_diff(&self) -> bool {
         match self {
             Entry::Ok { status, .. } => matches!(status, Status::Diff),
@@ -65,7 +72,7 @@ impl fmt::Display for Entry {
             Entry::Ok {
                 relpath, status, ..
             } => write!(f, "{} {}", status, relpath),
-            Entry::Err(reason) => write!(f, "{} {}", color::red(""), reason),
+            Entry::Err(reason) => write!(f, "{} {}", "".red(), reason),
         }
     }
 }
@@ -81,10 +88,10 @@ pub enum Status {
 impl fmt::Display for Status {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let icon = match self {
-            Status::Ok => color::green(""),
-            Status::Diff => color::yellow(""),
-            Status::MissingHome => color::yellow(""),
-            Status::MissingRepo => color::yellow(""),
+            Status::Ok => "".green(),
+            Status::Diff => "".yellow(),
+            Status::MissingHome => "".yellow(),
+            Status::MissingRepo => "".yellow(),
         };
 
         write!(f, "{}", icon)

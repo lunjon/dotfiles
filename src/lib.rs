@@ -1,6 +1,5 @@
 pub mod cli;
 pub mod cmd;
-pub mod color;
 pub mod data;
 pub mod files;
 pub mod handler;

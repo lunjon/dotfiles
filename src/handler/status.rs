@@ -1,11 +1,9 @@
 use super::types::Only;
 use crate::data::Entry;
+use crate::data::{Item, Status};
 use crate::index::Indexer;
-use crate::{
-    color,
-    data::{Item, Status},
-};
 use anyhow::Result;
+use crossterm::style::Stylize;
 use std::path::PathBuf;
 
 pub struct StatusHandler {
@@ -24,24 +22,42 @@ impl StatusHandler {
         log::debug!("Showing status with brief={}", brief);
 
         let mut indexed = self.indexer.index(&self.items)?;
+        indexed.sort_by(|(_, a), (_, b)| a.len().partial_cmp(&b.len()).unwrap());
+
         if brief {
-            self.brief(indexed);
+            let mut filtered = Vec::new();
+            for (name, entries) in indexed {
+                let entries: Vec<Entry> = entries
+                    .into_iter()
+                    .filter(|entry| !entry.is_status_ok())
+                    .collect();
+                if !entries.is_empty() {
+                    filtered.push((name, entries));
+                }
+            }
+            self.display(&filtered);
         } else {
-            self.full(&mut indexed);
+            self.display(&indexed);
+            println!(
+                "\n{} ok | {} diff | {} invalid | {} missing home | {} missing repository",
+                Status::Ok,
+                Status::Diff,
+                "".red(),
+                Status::MissingHome,
+                Status::MissingRepo,
+            );
         }
         Ok(())
     }
 
-    fn full(&self, indexed: &mut Vec<(String, Vec<Entry>)>) {
-        indexed.sort_by(|(_, a), (_, b)| a.len().partial_cmp(&b.len()).unwrap());
-
+    fn display(&self, indexed: &[(String, Vec<Entry>)]) {
         for (name, entries) in indexed {
             if entries.is_empty() {
                 continue;
             }
 
             if entries.len() == 1 {
-                println!(" {}", entries.first().unwrap());
+                println!(" {}: {}", name, entries.first().unwrap());
             } else {
                 println!("\n {}", name);
                 for entry in entries {
@@ -49,23 +65,5 @@ impl StatusHandler {
                 }
             }
         }
-
-        println!(
-            "\n{} ok | {} diff | {} invalid | {} missing home | {} missing repository",
-            Status::Ok,
-            Status::Diff,
-            color::red(""),
-            Status::MissingHome,
-            Status::MissingRepo,
-        );
-    }
-
-    fn brief(&self, _entries: Vec<(String, Vec<Entry>)>) {
-
-        // let entries: Vec<&Entry> = entries
-        //     .iter()
-        //     .flat_map(|(_name, es)| es)
-        //     .filter(|e| !(brief && e.is_ok()))
-        //     .collect();
     }
 }

@@ -1,12 +1,12 @@
 use super::types::{DiffOptions, Only};
 use crate::cmd::CmdRunner;
-use crate::color;
 use crate::data::{Entry, Item, Status};
 use crate::files;
 use crate::index::Indexer;
 use crate::path_str;
 use crate::prompt::Prompt;
 use anyhow::{bail, Result};
+use crossterm::style::Stylize;
 use inquire::MultiSelect;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -184,7 +184,7 @@ impl SyncHandler {
                 cmd.status()?;
             }
 
-            let msg = format!("Write {}?", color::blue(&display_name));
+            let msg = format!("Write {}?", &display_name.blue());
             if !self.prompt.confirm(&msg, false)? {
                 log::info!("Skipping {}", src_str);
                 return Ok(());
@@ -216,7 +216,7 @@ impl SyncHandler {
             files::copy(src, dst)?;
         }
 
-        println!("  {} {}", color::green(""), &relpath);
+        println!("  {} {}", "".green(), &relpath);
         Ok(())
     }
 }
