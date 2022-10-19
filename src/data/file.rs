@@ -1,4 +1,5 @@
 use super::item::Item;
+use crate::path::{try_strip_home_prefix, LOCAL_CONFIG_DIR};
 use anyhow::{bail, Result};
 use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf};
@@ -31,9 +32,11 @@ impl Dotfile {
                 items.push(item);
             }
         }
+
         if let Some(map) = df.config {
+            let relative = try_strip_home_prefix(&LOCAL_CONFIG_DIR);
             for (name, value) in map {
-                let item = Item::from_toml(name, value)?.with_suffix(&crate::LOCAL_CONFIG_DIR);
+                let item = Item::from_toml(name, value)?.with_suffix(&relative);
                 items.push(item);
             }
         }

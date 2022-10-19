@@ -1,5 +1,6 @@
 use crate::data::{Entry, Item, Status};
 use crate::handler::Only;
+use crate::path::try_strip_prefix;
 use crate::{files, path_str};
 use anyhow::Result;
 use glob::Pattern as GlobPattern;
@@ -116,7 +117,11 @@ impl Indexer {
         Ok(entries)
     }
 
-    fn process_glob(&self, globpattern: &str, ps: &[GlobPattern]) -> Result<Vec<Entry>> {
+    fn process_glob(
+        &self,
+        globpattern: &str,
+        ignore_patterns: &[GlobPattern],
+    ) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
 
         let home_glob_path = self.home.join(&globpattern);
@@ -136,13 +141,12 @@ impl Indexer {
         let mut home_files: Vec<String> = Vec::new();
         for p in home_glob.unwrap().flatten() {
             if p.is_file() {
-                let relative = p.strip_prefix(&self.home_str)?;
-                let s = path_str!(relative);
+                let s = try_strip_prefix(&self.home_str, &path_str!(&p));
                 if should_ignore(&s, &self.ignore_patterns) {
                     continue;
                 }
 
-                if !ps.is_empty() && should_ignore(&s, ps) {
+                if !ignore_patterns.is_empty() && should_ignore(&s, ignore_patterns) {
                     continue;
                 }
 
@@ -154,13 +158,12 @@ impl Indexer {
         let mut repo_files: Vec<String> = Vec::new();
         for p in repo_glob.unwrap().flatten() {
             if p.is_file() {
-                let relative = p.strip_prefix(&self.repo_str)?;
-                let s = path_str!(relative);
+                let s = try_strip_prefix(&self.repo_str, &path_str!(&p));
                 if should_ignore(&s, &self.ignore_patterns) {
                     continue;
                 }
 
-                if !ps.is_empty() && should_ignore(&s, ps) {
+                if !ignore_patterns.is_empty() && should_ignore(&s, ignore_patterns) {
                     continue;
                 }
 
@@ -168,7 +171,6 @@ impl Indexer {
                 repo_files.push(s.to_string());
             }
         }
-        // dbg!(home_files.len(), repo_files.len());
 
         let both: Vec<&String> = home_files
             .iter()

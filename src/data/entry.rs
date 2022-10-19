@@ -1,6 +1,5 @@
 use crate::color;
-use crate::path_str;
-use crate::HOME_DIR;
+use crate::path::try_strip_home_prefix;
 use anyhow::Result;
 use std::fmt;
 use std::path::PathBuf;
@@ -24,12 +23,7 @@ impl Entry {
         home_path: PathBuf,
         repo_path: PathBuf,
     ) -> Result<Self> {
-        let path = PathBuf::from(relpath);
-        let relpath = match path.strip_prefix(HOME_DIR.as_str()) {
-            Ok(p) => path_str!(p),
-            Err(_) => relpath.to_string(),
-        };
-
+        let relpath = try_strip_home_prefix(relpath);
         Ok(Self::Ok {
             relpath,
             status,

@@ -19,7 +19,7 @@ macro_rules! item {
             let v: Vec<String> = $files.to_vec().iter().map(|s| s.to_string()).collect();
             v
         };
-        crate::data::item::Item::new($name.to_string(), files, None)
+        $crate::data::item::Item::new($name.to_string(), files, None)
     }};
     ($name:expr, $files:expr, $ignore:expr) => {{
         let files = {
@@ -30,7 +30,7 @@ macro_rules! item {
             let v: Vec<String> = $ignore.to_vec().iter().map(|s| s.to_string()).collect();
             v
         };
-        crate::data::item::Item::new($name.to_string(), files, Some(ignore))
+        $crate::data::item::Item::new($name.to_string(), files, Some(ignore))
     }};
 }
 

@@ -3,6 +3,7 @@ use crate::data::Dotfile;
 use crate::files;
 use crate::handler::{DiffHandler, DiffOptions, Only, StatusHandler, SyncHandler, SyncOptions};
 use crate::logging;
+use crate::path::HOME_DIR;
 use crate::prompt::StdinPrompt;
 use anyhow::{bail, Result};
 use clap::{command, Arg, ArgMatches, Command};
@@ -177,7 +178,7 @@ Example: dotf git status",
             logging::init(level)?
         }
 
-        let home = PathBuf::from(crate::HOME_DIR.as_str());
+        let home = PathBuf::from(HOME_DIR.as_str());
         log::debug!("Home directory: {:?}", home);
 
         let dotfile_path = match get_dotfile_path(&home) {
