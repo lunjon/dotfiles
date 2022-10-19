@@ -6,10 +6,10 @@ CLI tool for managing dotfiles in your home directory.
 
 ## Features
 
-- It's fast
-- Easy-to-use interface for managing your dotfiles
+- Fast and easy tracking of dot and configuration files
+- Sync files between local file system and repository
 - Configuration file in flexible format using TOML
-- Display diffs
+- And more
 
 ## Installation
 
@@ -52,7 +52,7 @@ table = { files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }
 nvim = "nvim/**/*" # On linux this will typically be ~/.config/nvim/**/*
 ```
 
-Example of sub-commands:
+With your dotfile setup you can now use the `dotf` command:
   - `dotf status`: see current status of files tracked
   - `dotf sync`: sync files between home and repository
   - `dotf edit`: edit the dotfile in your favorite editor
