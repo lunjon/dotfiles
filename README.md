@@ -2,7 +2,7 @@
 
 CLI tool for managing dotfiles in your home directory.
 
-![dotfiles](https://user-images.githubusercontent.com/14161483/186741239-8e8f26d5-51f9-4ab5-a6d5-09a639334e74.png)
+![dotf](https://user-images.githubusercontent.com/14161483/196793590-65b571ca-8d14-4d5e-9c64-cd686d816e98.png)
 
 ## Features
 
