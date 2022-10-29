@@ -12,7 +12,7 @@ strip = true
 
 [dependencies]
 anyhow = "1.0"
-clap = { version = "3.1", features = ["cargo"] }
+clap = { version = "3.2", features = ["cargo"] }
 crossterm = "0.23"
 data-encoding = "2.3"
 directories = "4.0"
