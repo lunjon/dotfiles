@@ -22,7 +22,7 @@ pub struct Only {
 }
 
 impl Only {
-    pub fn from_glob(patterns: &[&str]) -> Result<Self> {
+    pub fn from_glob(patterns: &Vec<String>) -> Result<Self> {
         let mut ps = Vec::new();
         for p in patterns {
             let g = GlobPattern::new(p)?;
@@ -31,7 +31,7 @@ impl Only {
         Ok(Self { patterns: ps })
     }
 
-    pub fn from_regex(patterns: &[&str]) -> Result<Self> {
+    pub fn from_regex(patterns: &Vec<String>) -> Result<Self> {
         let mut ps = Vec::new();
         for p in patterns {
             let r = Regex::new(p)?;

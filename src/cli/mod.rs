@@ -6,7 +6,8 @@ use crate::logging;
 use crate::path::HOME_DIR;
 use crate::prompt::StdinPrompt;
 use anyhow::{bail, Result};
-use clap::{command, Arg, ArgMatches, Command};
+use clap::builder::PossibleValuesParser;
+use clap::{command, Arg, ArgAction, ArgMatches, Command};
 use std::env;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -25,7 +26,7 @@ impl Cli {
                     .long("log")
                     .global(true)
                     .takes_value(true)
-                    .possible_values(&["trace", "debug", "info", "warn", "error"])
+                    .value_parser(PossibleValuesParser::new(&["trace", "debug", "info", "warn", "error"]))
                     .default_missing_value("info"),
             )
             .subcommand(
@@ -34,12 +35,14 @@ impl Cli {
                     .arg(
                         Arg::new("home")
                             .long("home")
+                            .action(ArgAction::SetTrue)
                             .help("Sync files from repository to home."),
                     )
                     .arg(Arg::new("dryrun").long("dryrun"))
                     .arg(
                         Arg::new("diff")
                             .long("diff")
+                            .action(ArgAction::SetTrue)
                             .conflicts_with("no-confirm")
                             .help("Display inline diffs before"),
                     )
@@ -54,11 +57,13 @@ impl Cli {
                             .long("no-confirm")
                             .alias("yes")
                             .short('y')
+                            .action(ArgAction::SetTrue)
                             .help("Skip confirmation prompt."),
                     )
                     .arg(
                         Arg::new("no-backup")
                             .long("no-backup")
+                            .action(ArgAction::SetTrue)
                             .help("Do not create backups when copying to home."),
                     )
                     .arg(
@@ -66,7 +71,7 @@ impl Cli {
                         .long("interactive")
                         .short('i')
                         .takes_value(false)
-                        .conflicts_with_all(&["home","no-confirm"])
+                        .conflicts_with_all(&["no-confirm"])
                     )
                     .arg(
                         Arg::new("only")
@@ -74,7 +79,7 @@ impl Cli {
                             .long("only")
                             .short('o')
                             .takes_value(true)
-                            .multiple_occurrences(true)
+                            .action(ArgAction::Append)
                             .required(false),
                     )
                     .arg(
@@ -82,6 +87,7 @@ impl Cli {
                             .help("Use regular expressions in patterns specified in --only.")
                             .long("regex")
                             .short('r')
+                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("commit")
@@ -107,7 +113,7 @@ impl Cli {
                             .long("only")
                             .short('o')
                             .takes_value(true)
-                            .multiple_occurrences(true)
+                            .action(ArgAction::Append)
                             .required(false),
                     )
                     .arg(
@@ -115,11 +121,13 @@ impl Cli {
                             .help("Use regular expressions in patterns specified in --only.")
                             .long("regex")
                             .short('r')
+                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("brief")
                             .long("brief")
                             .short('b')
+                            .action(ArgAction::SetTrue)
                             .help("Only display files that are not up to date."),
                     ),
             )
@@ -132,7 +140,7 @@ impl Cli {
                             .long("only")
                             .short('o')
                             .takes_value(true)
-                            .multiple_occurrences(true)
+                            .action(ArgAction::Append)
                             .required(false),
                     )
                     .arg(
@@ -140,6 +148,7 @@ impl Cli {
                             .help("Use regular expressions in patterns specified in --only.")
                             .long("regex")
                             .short('r')
+                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("diff-command")
@@ -174,7 +183,7 @@ Example: dotf git status",
             )
             .get_matches();
 
-        if let Some(level) = matches.value_of("log") {
+        if let Some(level) = matches.get_one::<String>("log") {
             logging::init(level)?
         }
 
@@ -200,7 +209,7 @@ Example: dotf git status",
                 handler.status(false)?;
             }
             Some(("edit", matches)) => {
-                let editor = get_editor(matches.value_of("editor"));
+                let editor = get_editor(matches.get_one("editor"));
                 log::debug!("Editing using {}", editor);
 
                 let mut cmd = Cmd::new(&editor);
@@ -211,7 +220,7 @@ Example: dotf git status",
                 let only = get_only(matches)?;
                 let dotfile = load_dotfile(&dotfile_path)?;
                 let handler = StatusHandler::new(home, dotfile.repository(), dotfile.items(), only);
-                let brief = matches.is_present("brief");
+                let brief = matches.contains_id("brief");
                 handler.status(brief)?;
             }
             Some(("diff", matches)) => {
@@ -226,8 +235,8 @@ Example: dotf git status",
                 let dotfile = load_dotfile(&dotfile_path)?;
                 let runner = CmdRunner::new(dotfile.repository());
 
-                let args = match matches.values_of("args") {
-                    Some(args) => args.map(|a| a.to_string()).collect::<Vec<String>>(),
+                let args = match matches.get_many::<String>("args") {
+                    Some(args) => args.map(String::from).collect::<Vec<String>>(),
                     None => vec![],
                 };
 
@@ -239,14 +248,14 @@ Example: dotf git status",
                 let diff_options = get_diff_options(matches)?;
 
                 let options = SyncOptions {
-                    interactive: matches.is_present("interactive"),
-                    confirm: !matches.is_present("no-confirm"),
-                    backup: !matches.is_present("no-backup"),
-                    dryrun: matches.is_present("dryrun"),
-                    show_diff: matches.is_present("diff"),
+                    interactive: matches.contains_id("interactive"),
+                    confirm: !matches.contains_id("no-confirm"),
+                    backup: !matches.contains_id("no-backup"),
+                    dryrun: matches.contains_id("dryrun"),
+                    show_diff: matches.contains_id("diff"),
                     diff_options,
-                    git_commit: matches.value_of("commit").map(|s| s.to_string()),
-                    git_push: matches.is_present("push"),
+                    git_commit: matches.get_one::<String>("commit").map(String::from),
+                    git_push: matches.contains_id("push"),
                 };
 
                 let repository = dotfile.repository();
@@ -259,7 +268,7 @@ Example: dotf git status",
                     only,
                 );
 
-                if matches.is_present("home") {
+                if matches.contains_id("home") {
                     handler.copy_to_home()?;
                 } else {
                     handler.copy_to_repo()?;
@@ -273,11 +282,11 @@ Example: dotf git status",
 }
 
 fn get_only(matches: &ArgMatches) -> Result<Option<Only>> {
-    match matches.values_of("only") {
+    match matches.get_many::<String>("only") {
         Some(patterns) => {
-            let patterns: Vec<&str> = patterns.into_iter().collect();
+            let patterns: Vec<String> = patterns.map(|s| s.to_string()).collect();
             log::debug!("Got --only: {:?}", &patterns);
-            let o = match matches.is_present("regex") {
+            let o = match matches.contains_id("regex") {
                 true => Only::from_regex(&patterns)?,
                 false => Only::from_glob(&patterns)?,
             };
@@ -288,7 +297,7 @@ fn get_only(matches: &ArgMatches) -> Result<Option<Only>> {
 }
 
 fn get_diff_options(matches: &ArgMatches) -> Result<DiffOptions> {
-    match matches.value_of("diff-command") {
+    match matches.get_one::<&str>("diff-command") {
         Some(s) => {
             let split: Vec<String> = s.split_whitespace().map(|s| s.to_string()).collect();
             if split.is_empty() {
@@ -340,7 +349,7 @@ object = {{ path = "scripts/*", ignore = [ "*.out", ".cache" ] }}"#,
     Ok(())
 }
 
-fn get_editor(flag: Option<&str>) -> String {
+fn get_editor(flag: Option<&String>) -> String {
     match flag {
         Some(s) => s.to_string(),
         None => match env::var("EDITOR") {
