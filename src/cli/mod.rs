@@ -269,11 +269,9 @@ Example: dotf git status",
                 );
 
                 if let Some(true) = matches.get_one::<bool>("home") {
-                    println!("IS HOME");
-                    // handler.copy_to_home()?;
+                    handler.copy_to_home()?;
                 } else {
-                    println!("NOT HOME");
-                    // handler.copy_to_repo()?;
+                    handler.copy_to_repo()?;
                 }
             }
             _ => unreachable!(),
