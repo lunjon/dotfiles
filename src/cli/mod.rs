@@ -220,7 +220,7 @@ Example: dotf git status",
                 let only = get_only(matches)?;
                 let dotfile = load_dotfile(&dotfile_path)?;
                 let handler = StatusHandler::new(home, dotfile.repository(), dotfile.items(), only);
-                let brief = matches.contains_id("brief");
+                let brief = get_bool(matches, "brief");
                 handler.status(brief)?;
             }
             Some(("diff", matches)) => {
@@ -248,14 +248,14 @@ Example: dotf git status",
                 let diff_options = get_diff_options(matches)?;
 
                 let options = SyncOptions {
-                    interactive: matches.contains_id("interactive"),
-                    confirm: !matches.contains_id("no-confirm"),
-                    backup: !matches.contains_id("no-backup"),
-                    dryrun: matches.contains_id("dryrun"),
-                    show_diff: matches.contains_id("diff"),
+                    interactive: get_bool(matches, "interactive"),
+                    confirm: !get_bool(matches, "no-confirm"),
+                    backup: !get_bool(matches, "no-backup"),
+                    dryrun: get_bool(matches, "dryrun"),
+                    show_diff: get_bool(matches, "diff"),
                     diff_options,
                     git_commit: matches.get_one::<String>("commit").map(String::from),
-                    git_push: matches.contains_id("push"),
+                    git_push: get_bool(matches, "push"),
                 };
 
                 let repository = dotfile.repository();
@@ -286,7 +286,7 @@ fn get_only(matches: &ArgMatches) -> Result<Option<Only>> {
         Some(patterns) => {
             let patterns: Vec<String> = patterns.map(|s| s.to_string()).collect();
             log::debug!("Got --only: {:?}", &patterns);
-            let o = match matches.contains_id("regex") {
+            let o = match get_bool(matches, "regex") {
                 true => Only::from_regex(&patterns)?,
                 false => Only::from_glob(&patterns)?,
             };
@@ -356,5 +356,13 @@ fn get_editor(flag: Option<&String>) -> String {
             Ok(s) => s,
             Err(_) => String::from("vim"),
         },
+    }
+}
+
+fn get_bool(matches: &ArgMatches, name: &str) -> bool {
+    if let Some(true) = matches.get_one(name) {
+        true
+    } else {
+        false
     }
 }
