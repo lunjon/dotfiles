@@ -268,10 +268,12 @@ Example: dotf git status",
                     only,
                 );
 
-                if matches.contains_id("home") {
-                    handler.copy_to_home()?;
+                if let Some(true) = matches.get_one::<bool>("home") {
+                    println!("IS HOME");
+                    // handler.copy_to_home()?;
                 } else {
-                    handler.copy_to_repo()?;
+                    println!("NOT HOME");
+                    // handler.copy_to_repo()?;
                 }
             }
             _ => unreachable!(),
