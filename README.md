@@ -24,7 +24,7 @@ $ cargo install --path .
 `dotf` uses `~/.config/dotfiles.toml`, called the _dotfile_, to manage dotfiles.
 
 The dotfile must contain at least one section of files to track:
-- `files`: arbitrary filepaths relative to home directory to track, such as `notes/*.md` to track all markdown files in `~/notes/` directory.
+- `home`: filepaths relative to home directory to track, such as `notes/*.md` to track all markdown files in `~/notes/` directory.
 - `config`: known folder configuration directories:
   - Linux: `$XDG_CONFIG_HOME` or `$HOME/.config`
   - MacOS: `$HOME/Library/Application Support`
@@ -39,11 +39,11 @@ repository = "string"
 # All following sections required the following types:
 #  name = string | string[] | table
 
-[files] # Assumes files are relative to your home directory.
+[home] # Files that are relative to your home directory.
 vim = ".vimrc"                 # Simplest type, just a filepath
 glob = "notes/**/*.txt"        # Glob pattern
 list = [ ".zshrc", ".bashrc" ] # List of filepaths
-# Table form (* required field):
+# Table form :
 #   files* ([string]): file paths to use
 #   ignore ([string]): optional list of glob patterns to ignore
 table = { files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }
@@ -52,10 +52,12 @@ table = { files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }
 nvim = "nvim/**/*" # On linux this will typically be ~/.config/nvim/**/*
 ```
 
+\* Required field.
+
 With your dotfile setup you can now use the `dotf` command:
   - `dotf status`: see current status of files tracked
   - `dotf sync`: sync files between home and repository
   - `dotf edit`: edit the dotfile in your favorite editor
   - `dotf git`: run arbitrary git commands in the configured repository to sync files to
 
-For more information use `dotf [sub-command] --help`.
+For more information use `dotf --help`.

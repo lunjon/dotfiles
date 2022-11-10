@@ -333,11 +333,12 @@ fn bootstrap(path: &Path) -> Result<()> {
     let content = format!(
         r#"repository = "{}"
 
-[files]
-vim = ".vimrc" # type string
-glob = "notes/**/*.txt" # string with glob pattern
+[home]
+vim = ".vimrc"                 # type string
+glob = "notes/**/*.txt"        # string with glob pattern
 list = [ ".zshrc", ".bashrc" ] # list of strings
-object = {{ path = "scripts/*", ignore = [ "*.out", ".cache" ] }}"#,
+object = {{ files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }}
+"#,
         current_dir
     );
 
@@ -360,9 +361,7 @@ fn get_editor(flag: Option<&String>) -> String {
 }
 
 fn get_bool(matches: &ArgMatches, name: &str) -> bool {
-    if let Some(true) = matches.get_one(name) {
-        true
-    } else {
-        false
-    }
+    matches
+        .get_one::<bool>(name)
+        .map_or(false, |v| v.to_owned())
 }

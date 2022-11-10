@@ -26,7 +26,7 @@ impl Dotfile {
         }
 
         let mut items = Vec::new();
-        if let Some(map) = df.files {
+        if let Some(map) = df.home {
             for (name, value) in map {
                 let item = Item::from_toml(name, value)?;
                 items.push(item);
@@ -63,7 +63,7 @@ type ItemMap = HashMap<String, Toml>;
 struct RawDotfile {
     // Path to the repository.
     repository: String,
-    files: Option<ItemMap>,
+    home: Option<ItemMap>,
     config: Option<ItemMap>,
 }
 
@@ -76,7 +76,7 @@ mod tests {
         let dotfile_content = r#"
         repository = "./"
 
-        [files]
+        [home]
         cargo = "Cargo.toml"
         docs = [ "README.md", "todo.norg" ]
         glob = "src/*.rs"
@@ -101,7 +101,7 @@ mod tests {
             let dotfile_content = format!(
                 r#"
         repository = "./"
-        [files]
+        [home]
         {}
         "#,
                 item
