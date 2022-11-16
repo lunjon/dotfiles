@@ -31,12 +31,12 @@ impl Cli {
             )
             .subcommand(
                 Command::new("sync")
-                    .about("Sync home and repo files, defaults FROM home TO repo.")
+                    .about("Sync home and repo files, defaults home -> repo.")
                     .arg(
                         Arg::new("home")
+                            .help("Sync files from repository to home.")
                             .long("home")
                             .action(ArgAction::SetTrue)
-                            .help("Sync files from repository to home."),
                     )
                     .arg(Arg::new("dryrun").long("dryrun"))
                     .arg(
@@ -48,30 +48,30 @@ impl Cli {
                     )
                     .arg(
                         Arg::new("diff-command")
-                            .long("diff-command")
                             .help("Use as diff command (default: diff -u --color)")
+                            .long("diff-command")
+                            .requires("diff")
                             .number_of_values(1),
                     )
                     .arg(
                         Arg::new("no-confirm")
+                            .help("Skip confirmation prompt.")
                             .long("no-confirm")
                             .alias("yes")
                             .short('y')
                             .action(ArgAction::SetTrue)
-                            .help("Skip confirmation prompt."),
                     )
                     .arg(
                         Arg::new("no-backup")
+                            .help("Do not create backups when copying to home.")
                             .long("no-backup")
                             .action(ArgAction::SetTrue)
-                            .help("Do not create backups when copying to home."),
                     )
                     .arg(
                         Arg::new("interactive").help("Sync files interactively.")
                         .long("interactive")
                         .short('i')
-                        .takes_value(false)
-                        .conflicts_with_all(&["no-confirm"])
+                        .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("only")
@@ -87,6 +87,7 @@ impl Cli {
                             .help("Use regular expressions in patterns specified in --only.")
                             .long("regex")
                             .short('r')
+                            .requires("only")
                             .action(ArgAction::SetTrue)
                     )
                     .arg(
@@ -101,6 +102,7 @@ impl Cli {
                             .help("Run git push after commit.")
                             .long("push")
                             .takes_value(false)
+                            .requires("commit")
                     ),
             )
             .subcommand(
