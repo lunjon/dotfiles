@@ -30,6 +30,9 @@ impl Indexer {
             home_str,
             repo,
             repo_str,
+            // TODO: read these from files
+            //   - .gitignore
+            //   - .ignore
             ignore_patterns: vec![
                 GlobPattern::new("*/.git/*").unwrap(),
                 GlobPattern::new("*/node_modules/*").unwrap(),
@@ -75,8 +78,10 @@ impl Indexer {
     }
 
     fn process_item(&self, item: &Item) -> Result<Vec<Entry>> {
+        log::debug!("Processing item: {:?}", item);
+
         let ps = match item.ignore_patterns()? {
-            None => vec![], // unnecessary allocation?
+            None => vec![],
             Some(ps) => ps,
         };
 
@@ -87,7 +92,9 @@ impl Indexer {
             let repo_path = self.repo.join(&filepath);
 
             if is_glob(&filepath) {
-                return self.process_glob(&filepath, &ps);
+                let es = self.process_glob(&filepath, &ps)?;
+                entries.extend(es);
+                continue;
             }
 
             if !(home_path.exists() || repo_path.exists()) {
