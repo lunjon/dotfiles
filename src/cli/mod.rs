@@ -36,13 +36,11 @@ impl Cli {
                         Arg::new("home")
                             .help("Sync files from repository to home.")
                             .long("home")
-                            .action(ArgAction::SetTrue)
                     )
                     .arg(Arg::new("dryrun").long("dryrun"))
                     .arg(
                         Arg::new("diff")
                             .long("diff")
-                            .action(ArgAction::SetTrue)
                             .conflicts_with("no-confirm")
                             .help("Display inline diffs before"),
                     )
@@ -59,19 +57,16 @@ impl Cli {
                             .long("no-confirm")
                             .alias("yes")
                             .short('y')
-                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("no-backup")
                             .help("Do not create backups when copying to home.")
                             .long("no-backup")
-                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("interactive").help("Sync files interactively.")
                         .long("interactive")
                         .short('i')
-                        .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("only")
@@ -88,7 +83,6 @@ impl Cli {
                             .long("regex")
                             .short('r')
                             .requires("only")
-                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("commit")
@@ -101,7 +95,6 @@ impl Cli {
                         Arg::new("push")
                             .help("Run git push after commit.")
                             .long("push")
-                            .takes_value(false)
                             .requires("commit")
                     ),
             )
@@ -123,13 +116,11 @@ impl Cli {
                             .help("Use regular expressions in patterns specified in --only.")
                             .long("regex")
                             .short('r')
-                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("brief")
                             .long("brief")
                             .short('b')
-                            .action(ArgAction::SetTrue)
                             .help("Only display files that are not up to date."),
                     ),
             )
@@ -150,7 +141,6 @@ impl Cli {
                             .help("Use regular expressions in patterns specified in --only.")
                             .long("regex")
                             .short('r')
-                            .action(ArgAction::SetTrue)
                     )
                     .arg(
                         Arg::new("diff-command")
@@ -222,7 +212,7 @@ Example: dotf git status",
                 let only = get_only(matches)?;
                 let dotfile = load_dotfile(&dotfile_path)?;
                 let handler = StatusHandler::new(home, dotfile.repository(), dotfile.items(), only);
-                let brief = get_bool(matches, "brief");
+                let brief = matches.contains_id("brief");
                 handler.status(brief)?;
             }
             Some(("diff", matches)) => {
@@ -250,14 +240,14 @@ Example: dotf git status",
                 let diff_options = get_diff_options(matches)?;
 
                 let options = SyncOptions {
-                    interactive: get_bool(matches, "interactive"),
-                    confirm: !get_bool(matches, "no-confirm"),
-                    backup: !get_bool(matches, "no-backup"),
-                    dryrun: get_bool(matches, "dryrun"),
-                    show_diff: get_bool(matches, "diff"),
+                    interactive: matches.contains_id("interactive"),
+                    confirm: matches.contains_id("no-confirm"),
+                    backup: !matches.contains_id("no-backup"),
+                    dryrun: matches.contains_id("dryrun"),
+                    show_diff: matches.contains_id("diff"),
                     diff_options,
                     git_commit: matches.get_one::<String>("commit").map(String::from),
-                    git_push: get_bool(matches, "push"),
+                    git_push: matches.contains_id("push"),
                 };
 
                 let repository = dotfile.repository();
@@ -288,7 +278,7 @@ fn get_only(matches: &ArgMatches) -> Result<Option<Only>> {
         Some(patterns) => {
             let patterns: Vec<String> = patterns.map(|s| s.to_string()).collect();
             log::debug!("Got --only: {:?}", &patterns);
-            let o = match get_bool(matches, "regex") {
+            let o = match matches.contains_id("regex") {
                 true => Only::from_regex(&patterns)?,
                 false => Only::from_glob(&patterns)?,
             };
@@ -353,17 +343,20 @@ object = {{ files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }}
 }
 
 fn get_editor(flag: Option<&String>) -> String {
-    match flag {
-        Some(s) => s.to_string(),
-        None => match env::var("EDITOR") {
-            Ok(s) => s,
-            Err(_) => String::from("vim"),
-        },
+    if let Some(s) = flag {
+        s.to_string()
+    } else if let Some(s) = try_get_env("VISUAK") {
+        s
+    } else if let Some(s) = try_get_env("EDITOR") {
+        s
+    } else {
+        "nano".to_string()
     }
 }
 
-fn get_bool(matches: &ArgMatches, name: &str) -> bool {
-    matches
-        .get_one::<bool>(name)
-        .map_or(false, |v| v.to_owned())
+fn try_get_env(name: &str) -> Option<String> {
+    match env::var(name) {
+        Ok(s) => Some(s),
+        Err(_) => None,
+    }
 }
