@@ -150,7 +150,7 @@ impl Cli {
                     ),
             )
             .subcommand(
-                Command::new("edit").about("Edit ~/dotfiles.y[a]ml.").arg(
+                Command::new("edit").about("Edit dotfiles").arg(
                     Arg::new("editor")
                         .long("editor")
                         .short('e')
