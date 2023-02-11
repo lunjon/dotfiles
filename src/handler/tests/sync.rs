@@ -74,7 +74,7 @@ fn copy_to_home() {
     // Arrange
     let (context, handler) = setup();
     let envfile = context.home_path("env.toml");
-    let diffedbackup = context.home_path("diffed.txt.backup");
+    let diffedbackup = context.home_path(".diffed.txt.backup");
     assert!(!envfile.exists());
     assert!(!diffedbackup.exists());
 

@@ -1,4 +1,4 @@
-default: check test lint 
+default: fmt check test lint 
 alias i := install
 alias t := test
 
@@ -12,7 +12,7 @@ fmt:
     cargo fmt
 
 lint: fmt
-    cargo clippy
+    cargo clippy --fix --allow-dirty
 
 install:
     cargo install --path .

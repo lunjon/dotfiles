@@ -35,7 +35,7 @@ fn setup() -> (TestContext, Indexer) {
 #[test]
 fn return_zero_entries_given_empty_list() {
     let (_, indexer) = setup();
-    let res = indexer.index(&vec![]).unwrap();
+    let res = indexer.index(&[]).unwrap();
     assert!(res.is_empty());
 }
 

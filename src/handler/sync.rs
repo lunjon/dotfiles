@@ -204,7 +204,7 @@ impl SyncHandler {
 
             if target.is_home() && dst.exists() && self.options.backup {
                 let filename = path_str!(dst.file_name().unwrap());
-                let filename = format!("{filename}.backup");
+                let filename = format!(".{filename}.backup");
 
                 let mut backup = PathBuf::from(&dst);
                 backup.set_file_name(filename);
