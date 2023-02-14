@@ -241,7 +241,7 @@ Example: dotf git status",
 
                 let options = SyncOptions {
                     interactive: matches.contains_id("interactive"),
-                    confirm: matches.contains_id("no-confirm"),
+                    confirm: !matches.contains_id("no-confirm"),
                     backup: !matches.contains_id("no-backup"),
                     dryrun: matches.contains_id("dryrun"),
                     show_diff: matches.contains_id("diff"),
@@ -249,7 +249,7 @@ Example: dotf git status",
                     git_commit: matches.get_one::<String>("commit").map(String::from),
                     git_push: matches.contains_id("push"),
                 };
-                log::debug!("Using sync optins: {:?}", options);
+                log::debug!("Sync options {:?}", &options);
 
                 let repository = dotfile.repository();
                 let handler = SyncHandler::new(
@@ -262,8 +262,10 @@ Example: dotf git status",
                 );
 
                 if matches.contains_id("home") {
+                    log::info!("Syncing repo -> home");
                     handler.copy_to_home()?;
                 } else {
+                    log::info!("Syncing home -> repo");
                     handler.copy_to_repo()?;
                 }
             }
