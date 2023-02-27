@@ -131,8 +131,8 @@ impl Indexer {
     ) -> Result<Vec<Entry>> {
         let mut entries = Vec::new();
 
-        let home_glob_path = self.home.join(&globpattern);
-        let repo_glob_path = self.repo.join(&globpattern);
+        let home_glob_path = self.home.join(globpattern);
+        let repo_glob_path = self.repo.join(globpattern);
 
         let home_str = path_str!(home_glob_path);
         let repo_str = path_str!(repo_glob_path);

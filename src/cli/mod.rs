@@ -26,7 +26,7 @@ impl Cli {
                     .long("log")
                     .global(true)
                     .takes_value(true)
-                    .value_parser(PossibleValuesParser::new(&["trace", "debug", "info", "warn", "error"]))
+                    .value_parser(PossibleValuesParser::new(["trace", "debug", "info", "warn", "error"]))
                     .default_missing_value("info"),
             )
             .subcommand(
@@ -249,6 +249,7 @@ Example: dotf git status",
                     git_commit: matches.get_one::<String>("commit").map(String::from),
                     git_push: matches.contains_id("push"),
                 };
+                log::debug!("Using sync optins: {:?}", options);
 
                 let repository = dotfile.repository();
                 let handler = SyncHandler::new(
@@ -260,7 +261,7 @@ Example: dotf git status",
                     only,
                 );
 
-                if let Some(true) = matches.get_one::<bool>("home") {
+                if matches.contains_id("home") {
                     handler.copy_to_home()?;
                 } else {
                     handler.copy_to_repo()?;
@@ -337,7 +338,7 @@ object = {{ files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }}
     let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
-        .open(&path)?;
+        .open(path)?;
     file.write_all(content.as_bytes())?;
     Ok(())
 }

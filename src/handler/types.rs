@@ -41,6 +41,7 @@ impl Only {
     }
 }
 
+#[derive(Debug)]
 pub struct DiffOptions {
     cmd: Vec<String>,
 }
@@ -56,7 +57,7 @@ impl DiffOptions {
             None => bail!("empty diff command"),
         };
 
-        let mut cmd = Command::new(&root);
+        let mut cmd = Command::new(root);
         for arg in &self.cmd[1..] {
             cmd.arg(arg);
         }

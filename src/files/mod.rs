@@ -19,18 +19,18 @@ pub fn digest(data: &[u8]) -> Result<String> {
 
 pub fn copy(src: &Path, dst: &Path) -> Result<()> {
     log::debug!("Copy: {:?} to {:?}", src, dst);
-    fs::copy(&src, &dst)?;
+    fs::copy(src, dst)?;
     Ok(())
 }
 
 pub fn read_string(path: &Path) -> Result<String> {
     let mut buf = String::new();
-    let mut file = fs::File::open(&path)?;
+    let mut file = fs::File::open(path)?;
     file.read_to_string(&mut buf)?;
     Ok(buf)
 }
 
 pub fn create_dirs(path: &Path) -> Result<()> {
-    fs::create_dir_all(&path)?;
+    fs::create_dir_all(path)?;
     Ok(())
 }

@@ -11,6 +11,7 @@ use inquire::MultiSelect;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
 pub struct SyncOptions {
     // Do not execute any file operations.
     pub dryrun: bool,
