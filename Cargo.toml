@@ -25,5 +25,5 @@ serde = { version = "1.0", features = ["derive"] }
 rand = "0.8.5"
 toml = "0.7.2"
 regex = "1"
-inquire = "0.5.3"
+inquire = "0.6.0"
 lazy_static = "1.4.0"
