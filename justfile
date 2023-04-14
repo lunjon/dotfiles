@@ -14,5 +14,5 @@ fmt:
 lint: fmt
     cargo clippy --fix --allow-dirty
 
-install:
-    cargo install --path .
+install: check test
+    cargo install --path . --locked
