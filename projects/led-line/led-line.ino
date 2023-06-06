@@ -1,52 +1,119 @@
 /*
-Styr en 74HC595 shift register med en ATtiny13a (programmerad med Arduino Uno).
+LED Line
+========
+Styr en rad med 8 LEDs mha. ett 74HC595 shift register.
 
-Resurser:
+TODO
+====
+- variera delay med trimpot/potentiometer
+- ändra program med en knapp
+
+Komponenter
+===========
+
+Resurser
+========
 - 74HC595 guide: https://www.arduino.cc/en/Tutorial/Foundations/ShiftOut
-- ATtiny13a med Arduino guide: https://create.arduino.cc/projecthub/taunoerik/programming-attiny13-with-arduino-uno-07beba
 */
 
-//Pin connected to ST_CP of 74HC595
-int latchPin = 4;
-//Pin connected to SH_CP of 74HC595
-int clockPin = 2;
-////Pin connected to DS of 74HC595
-int dataPin = 3;
+#define dataPin 4   // Pin connected to DS of 74HC595
+#define latchPin 3  // Pin connected to ST_CP of 74HC595
+#define clockPin 2  // Pin connected to SH_CP of 74HC595
 
-byte outputs[5];
+unsigned long DELAY = 50;
+int currentProgram = 2;
 
 void setup() {
-  //set pins to output so you can control the shift register
+  // Set pins to output so you can control the shift register
+  pinMode(dataPin, OUTPUT);
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
-  pinMode(dataPin, OUTPUT);
-
-  outputs[0] = 0x03; // 00000011 (red)
-  outputs[1] = 0x0C; // 00001100 (yellow)
-  outputs[2] = 0x30; // 00110000 (green)
-  outputs[3] = 0x40; // 01000000 (white)
-  outputs[4] = 0xFF; // 11111111 (all)
-
-  display(outputs[4]);
 }
 
 void loop() {
-  for (int i = 0; i < 6; i++) {
-    display(outputs[i]);
+  uint8_t size;         // Size of the allocated array in bytes
+  byte* output;         // Array containing the program
+  bool mirror = false;  // Run a reverse of the program as well
+
+  if (currentProgram == 0) {
+    // Runs up and down
+    size = 8;
+    mirror = true;
+    output = createArray(size);
+    byte* p = output;
+    *p++ = 0x01;
+    *p++ = 0x02;
+    *p++ = 0x04;
+    *p++ = 0x08;
+    *p++ = 0x10;
+    *p++ = 0x20;
+    *p++ = 0x40;
+    *p++ = 0x80;
+  } else if (currentProgram == 1) {
+    // Just blinks all LEDs
+    size = 4;
+    output = createArray(size);
+    byte* p = output;
+    *p++ = 0x00;
+    *p++ = 0x00;
+    *p++ = 0xFF;
+    *p++ = 0xFF;
+  } else if (currentProgram == 2) {
+    // Fill up and down
+    size = 8;
+    mirror = true;
+    output = createArray(size);
+    byte* p = output;
+    *p++ = 0x00;
+    *p++ = 0x01;
+    *p++ = 0x03;
+    *p++ = 0x0F;
+    *p++ = 0x1F;
+    *p++ = 0x3F;
+    *p++ = 0x7F;
+    *p++ = 0xFF;
+  }
+
+  if (output == NULL) {
+    delay(10);
+    return;
+  }
+
+  // Runs from first to last element
+  byte* p = output;
+  for (uint8_t i = 0; i < size; i++) {
+    display(*p);
+    *p++;
+    delay(DELAY);
+  }
+
+  // If mirror = true, run from last - 1 to first element
+  if (mirror) {
+    *p--;
+    for (uint8_t i = 0; i < size - 1; i++) {
+      display(*p);
+      *p--;
+      delay(DELAY);
+    }
+  }
+
+  // Free allocated memory
+  if (output != NULL) {
+    free(output);
   }
 }
 
 void display(byte n) {
-  writeNum(n);
-  delay(500);
-}
-
-void writeNum(byte n) {
   digitalWrite(latchPin, LOW);
 
   // shift out the bits:
   shiftOut(dataPin, clockPin, MSBFIRST, n);
 
-  //take the latch pin high so the LEDs will light up:
+  // Take the latch pin high so the LEDs will light up
   digitalWrite(latchPin, HIGH);
+}
+
+byte* createArray(uint8_t size) {
+  byte* p = (byte*)malloc(size * sizeof(byte));
+  return p;
 }
