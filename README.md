@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # DotFiles
 
 CLI tool for managing dotfiles in your home directory.
@@ -61,3 +62,8 @@ With your dotfile setup you can now use the `dotf` command:
   - `dotf git`: run arbitrary git commands in the configured repository to sync files to
 
 For more information use `dotf --help`.
+=======
+# Electro
+
+Electronics projects.
+>>>>>>> Fix project file names
