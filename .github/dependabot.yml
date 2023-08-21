@@ -5,5 +5,5 @@ updates:
   - package-ecosystem: cargo
     directory: "/" # Location of package manifests
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
