@@ -16,7 +16,7 @@ CLI tool for managing configuration files.
 Currently, you need to clone the repository and install with cargo:
 
 ```sh
-$ cargo install --path .
+$ cargo install --path . --locked
 ```
 
 ## Usage
