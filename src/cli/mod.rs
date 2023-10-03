@@ -150,7 +150,7 @@ impl Cli {
                     ),
             )
             .subcommand(
-                Command::new("edit").about("Edit dotfiles").arg(
+                Command::new("edit").about("Edit the dotfile").arg(
                     Arg::new("editor")
                         .long("editor")
                         .short('e')

@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 # DotFiles
 
-CLI tool for managing dotfiles in your home directory.
+CLI tool for managing configuration files.
 
 ![dotf](https://user-images.githubusercontent.com/14161483/196793590-65b571ca-8d14-4d5e-9c64-cd686d816e98.png)
 
@@ -14,7 +13,7 @@ CLI tool for managing dotfiles in your home directory.
 
 ## Installation
 
-Currently you need to clone the repository and install with cargo:
+Currently, you need to clone the repository and install with cargo:
 
 ```sh
 $ cargo install --path .
@@ -35,6 +34,7 @@ It is better demonstrated with an example.
 
 ```toml
 # The path to the repository you wish to sync the files.
+# This is required.
 repository = "string"
 
 # All following sections required the following types:
@@ -44,7 +44,7 @@ repository = "string"
 vim = ".vimrc"                 # Simplest type, just a filepath
 glob = "notes/**/*.txt"        # Glob pattern
 list = [ ".zshrc", ".bashrc" ] # List of filepaths
-# Table form :
+# Table form:
 #   files* ([string]): file paths to use
 #   ignore ([string]): optional list of glob patterns to ignore
 table = { files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }
@@ -62,8 +62,3 @@ With your dotfile setup you can now use the `dotf` command:
   - `dotf git`: run arbitrary git commands in the configured repository to sync files to
 
 For more information use `dotf --help`.
-=======
-# Electro
-
-Electronics projects.
->>>>>>> Fix project file names
