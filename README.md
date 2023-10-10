@@ -40,7 +40,8 @@ repository = "string"
 # All following sections required the following types:
 #  name = string | string[] | table
 
-[home] # Files that are relative to your home directory.
+# Files that are relative to your home directory.
+[home]
 vim = ".vimrc"                 # Simplest type, just a filepath
 glob = "notes/**/*.txt"        # Glob pattern
 list = [ ".zshrc", ".bashrc" ] # List of filepaths
@@ -49,8 +50,10 @@ list = [ ".zshrc", ".bashrc" ] # List of filepaths
 #   ignore ([string]): optional list of glob patterns to ignore
 table = { files = ["scripts/*"], ignore = [ "*.out", ".cache" ] }
 
-[config] # Files in standard configuration directory.
-nvim = "nvim/**/*" # On linux this will typically be ~/.config/nvim/**/*
+# Files in standard configuration directory.
+# On linux this will typically be ~/.config/nvim/**/*
+[config]
+nvim = "nvim/**/*"
 ```
 
 \* Required field.
