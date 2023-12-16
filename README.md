@@ -6,18 +6,20 @@ CLI tool for managing configuration files.
 
 ## Features
 
-- Fast and easy tracking of dot and configuration files
+- Fast and easy tracking of configuration files
 - Sync files between local file system and repository
 - Configuration file in flexible format using TOML
 - And more
 
 ## Installation
 
-Currently, you need to clone the repository and install with cargo:
+Clone the repository and install with cargo:
 
 ```sh
 $ cargo install --path . --locked
 ```
+
+This will install a binary called `dotf`.
 
 ## Usage
 
@@ -33,12 +35,12 @@ The dotfile must contain at least one section of files to track:
 It is better demonstrated with an example.
 
 ```toml
-# The path to the repository you wish to sync the files.
+# The path to the repository you wish to sync the files to.
 # This is required.
 repository = "string"
 
-# All following sections required the following types:
-#  name = string | string[] | table
+# All following sections support the following types:
+#  name = string | [string] | table
 
 # Files that are relative to your home directory.
 [home]
@@ -58,7 +60,7 @@ nvim = "nvim/**/*"
 
 \* Required field.
 
-With your dotfile setup you can now use the `dotf` command:
+With a dotfile you can now use the `dotf` command:
   - `dotf status`: see current status of files tracked
   - `dotf sync`: sync files between home and repository
   - `dotf edit`: edit the dotfile in your favorite editor
