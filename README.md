@@ -1,3 +1,8 @@
+# Archivation
+
+I moved this repository to a private repository were I keep other tooling in one place.
+This was mostly written to learn some Rust, but it's still usable as is.
+
 # DotFiles
 
 CLI tool for managing configuration files.
